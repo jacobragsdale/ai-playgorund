@@ -1,3 +1,5 @@
+import concurrent.futures
+
 import pandas as pd
 import glob
 import os
@@ -6,19 +8,10 @@ from openai import OpenAI
 from openai.types.chat import ChatCompletion
 
 os.environ['OPENAI_API_KEY'] = ''  # Put API key here
-
 client = OpenAI()
 
-with open("account_mapping.json", "r") as f:
-    historical_mappings = json.load(f)
 
-# Load the excel sheets into pandas dataframes
-csv_files = glob.glob(os.path.join("csv_data", "*.csv"))
-dataframes = [pd.read_csv(file) for file in csv_files]
-dataframes = dataframes[:10]
-
-for i, df in enumerate(dataframes):
-    sample_columns = df.columns.tolist()
+def process_dataframe(df: pd.DataFrame, historical_mappings: dict):
     sample_data = df.head(2).to_dict(orient="records")
 
     prompt = (
@@ -48,7 +41,8 @@ for i, df in enumerate(dataframes):
     response: ChatCompletion = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You are a data analysis assistant that specializes in identifying column types in datasets. Always respond with ONLY the requested JSON format."},
+            {"role": "system",
+             "content": "You are a data analysis assistant that specializes in identifying column types in datasets. Always respond with ONLY the requested JSON format."},
             {"role": "user", "content": prompt}
         ],
         response_format={"type": "json_object"}
@@ -65,12 +59,43 @@ for i, df in enumerate(dataframes):
 
     df.rename(columns={guessed_column: "account_id"}, inplace=True)
 
-    # update the mapping of columns names
-    historical_mappings.setdefault("historical_account_ids", []).append(guessed_column)
+    print(f"Renamed column {guessed_column} to account_id")
+    return guessed_column
+
+
+def main():
+    with open("account_mapping.json", "r") as f:
+        historical_mappings = json.load(f)
+
+    # Load the excel sheets into pandas dataframes
+    csv_files = glob.glob(os.path.join("csv_data", "*.csv"))
+    dataframes = [pd.read_csv(file) for file in csv_files]
+    dataframes = dataframes[:50]
+
+    guessed_columns = []
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_df = {executor.submit(process_dataframe, df, historical_mappings): df for df in dataframes}
+
+        # Process results as they complete
+        for future in concurrent.futures.as_completed(future_to_df):
+            try:
+                guessed_column = future.result()
+                guessed_columns.append(guessed_column)
+            except Exception as e:
+                print(f"Error processing dataframe: {e}")
+
+    # Update historical mappings after all threads complete
+    for column in guessed_columns:
+        historical_mappings.setdefault("historical_account_ids", []).append(column)
+
+    # Remove duplicates
     historical_mappings["historical_account_ids"] = list(set(historical_mappings["historical_account_ids"]))
 
+    # Save updated mappings
     with open("account_mapping.json", "w") as f:
         json.dump(historical_mappings, f, indent=2)
 
-    print(f"Renamed column {guessed_column} to account_id")
 
+if __name__ == "__main__":
+    main()
