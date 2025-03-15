@@ -1,0 +1,101 @@
+current balance,status,Customer,type,Country,customer identifier,accID,email,start date,Last Activity,branch,phone,zip_code,Address,Account-id:
+5172.84,active,John Johnson,Credit,UK,89943751,89943751,user3751@example.com,2022-09-19,2024-10-17,Branch 8,+1-288-431-5853,20421,270 Broadway,89943751
+2142.34,active,John Smith,Checking,Canada,02962176,02962176,user2176@example.com,2021-07-09,2024-03-11,Branch 8,+1-565-749-6359,55193,982 Broadway,02962176
+5368.93,inactive,Alex Johnson,Checking,USA,81191385,81191385,user1385@test.net,2021-07-13,2024-11-05,Branch 14,+1-638-616-6879,59777,375 Maple Drive,81191385
+8355.27,inactive,Chris Doe,Savings,UK,97309512,97309512,user9512@example.com,2020-06-19,2024-09-26,Branch 14,+1-789-233-8505,37057,448 First Ave,97309512
+6161.77,active,Jane Brown,Checking,UK,50794621,50794621,user4621@test.net,2024-09-18,2025-02-18,Branch 17,+1-829-538-8261,92211,727 First Ave,50794621
+6341.55,active,Katie Smith,Credit,Germany,52292970,52292970,user2970@sample.org,2022-03-17,2024-05-24,Branch 20,+1-753-395-8803,19854,968 Main St,52292970
+5414.89,inactive,John Johnson,Credit,USA,52429596,52429596,user9596@test.net,2022-05-06,2024-05-27,Branch 11,+1-996-194-9595,55209,178 Main St,52429596
+9273.38,inactive,John Doe,Loan,Australia,30234343,30234343,user4343@test.net,2024-08-20,2024-05-25,Branch 6,+1-497-295-9053,95150,882 Broadway,30234343
+9319.71,active,Alex Brown,Credit,UK,68065050,68065050,user5050@test.net,2023-02-02,2025-01-04,Branch 6,+1-246-117-9476,40206,701 First Ave,68065050
+5132.1,active,John Brown,Loan,UK,08226887,08226887,user6887@test.net,2023-03-28,2024-10-30,Branch 16,+1-483-189-5259,14505,531 Broadway,08226887
+3064.54,active,Jane Smith,Checking,USA,59111114,59111114,user1114@sample.org,2022-07-09,2024-08-08,Branch 2,+1-508-202-2243,78515,717 First Ave,59111114
+4601.27,active,Jane Davis,Loan,USA,25872372,25872372,user2372@test.net,2021-08-01,2024-09-26,Branch 7,+1-311-267-7668,47085,525 First Ave,25872372
+1873.71,inactive,Alex Davis,Credit,Canada,33864149,33864149,user4149@test.net,2023-06-25,2024-05-22,Branch 9,+1-798-653-9878,15622,400 Main St,33864149
+6367.08,inactive,John Smith,Checking,USA,77801835,77801835,user1835@example.com,2022-03-05,2024-11-08,Branch 15,+1-925-431-1895,66643,184 Broadway,77801835
+5005.92,active,Chris Doe,Credit,USA,52803135,52803135,user3135@example.com,2023-04-03,2024-04-12,Branch 17,+1-864-598-9087,27032,826 Maple Drive,52803135
+1041.97,active,Chris Davis,Loan,USA,87293029,87293029,user3029@test.net,2022-08-16,2024-10-12,Branch 17,+1-780-284-9525,11936,390 Maple Drive,87293029
+1984.5,active,Chris Davis,Savings,Germany,93540220,93540220,user0220@example.com,2023-08-28,2024-04-28,Branch 2,+1-261-962-7180,76553,960 Main St,93540220
+4801.52,active,Jane Brown,Loan,Australia,49721922,49721922,user1922@example.com,2020-07-16,2024-06-08,Branch 6,+1-302-639-8197,33944,492 Broadway,49721922
+8877.01,active,Alex Smith,Loan,Canada,32556591,32556591,user6591@example.com,2023-10-07,2024-08-06,Branch 2,+1-697-584-5193,60218,360 Broadway,32556591
+5668.24,active,Jane Davis,Loan,Germany,14524049,14524049,user4049@example.com,2024-05-04,2024-05-17,Branch 10,+1-378-880-2668,71689,739 Maple Drive,14524049
+6818.53,inactive,Jane Smith,Checking,USA,78853921,78853921,user3921@test.net,2022-03-06,2024-07-29,Branch 11,+1-378-527-1490,64816,764 Broadway,78853921
+3396.9,inactive,Katie Smith,Checking,Germany,82671002,82671002,user1002@sample.org,2025-02-06,2024-04-10,Branch 19,+1-848-369-5376,25713,256 Broadway,82671002
+5718.4,inactive,Emily Smith,Savings,Canada,65160530,65160530,user0530@sample.org,2024-07-30,2024-10-24,Branch 17,+1-782-827-5460,95024,124 First Ave,65160530
+4479.32,active,Chris Davis,Checking,Australia,90833881,90833881,user3881@sample.org,2021-09-16,2024-03-29,Branch 7,+1-535-756-1319,42140,581 First Ave,90833881
+6594.71,inactive,Emily Brown,Credit,Australia,45688053,45688053,user8053@example.com,2021-01-19,2024-08-13,Branch 11,+1-404-323-4839,92859,184 Main St,45688053
+515.25,inactive,Chris Brown,Loan,Australia,28209582,28209582,user9582@example.com,2024-01-03,2025-02-10,Branch 5,+1-914-119-1202,20694,205 First Ave,28209582
+4938.07,active,John Davis,Loan,UK,26988826,26988826,user8826@sample.org,2024-02-27,2025-01-02,Branch 9,+1-922-460-4971,29578,447 Main St,26988826
+2966.97,active,Katie Doe,Savings,Canada,35222379,35222379,user2379@test.net,2023-05-12,2024-12-27,Branch 1,+1-409-178-1535,90311,189 Broadway,35222379
+3268.59,inactive,John Brown,Credit,Germany,18063628,18063628,user3628@test.net,2020-03-20,2024-10-14,Branch 14,+1-284-828-3846,90987,710 Broadway,18063628
+9609.57,inactive,John Smith,Checking,Canada,16421635,16421635,user1635@test.net,2023-07-15,2024-09-15,Branch 8,+1-747-462-9170,34595,219 Broadway,16421635
+1835.12,active,Emily Johnson,Loan,UK,94559716,94559716,user9716@test.net,2021-10-25,2024-12-20,Branch 20,+1-285-722-2489,31266,260 Broadway,94559716
+3119.34,active,Katie Johnson,Credit,USA,11122616,11122616,user2616@test.net,2023-10-23,2025-02-18,Branch 5,+1-268-770-6292,12687,473 Broadway,11122616
+5103.83,active,Emily Brown,Savings,UK,23592881,23592881,user2881@sample.org,2024-11-10,2024-10-28,Branch 16,+1-932-202-7335,87221,863 First Ave,23592881
+8631.64,active,Chris Smith,Savings,Germany,93831041,93831041,user1041@example.com,2022-12-19,2024-03-29,Branch 1,+1-233-387-1919,87973,779 First Ave,93831041
+4172.53,active,John Brown,Credit,Canada,59073237,59073237,user3237@example.com,2023-08-04,2024-12-27,Branch 1,+1-343-333-5372,54221,226 Maple Drive,59073237
+7441.21,inactive,Chris Brown,Loan,Canada,77183529,77183529,user3529@example.com,2020-06-15,2024-05-17,Branch 4,+1-407-355-1985,88940,380 Main St,77183529
+8565.18,active,Katie Brown,Checking,UK,57782726,57782726,user2726@sample.org,2021-04-18,2025-02-09,Branch 20,+1-598-455-8898,24391,835 Main St,57782726
+3107.06,active,John Johnson,Savings,UK,85586167,85586167,user6167@sample.org,2020-11-08,2025-01-02,Branch 2,+1-352-601-2430,31449,781 Main St,85586167
+3933.57,active,Emily Doe,Loan,Canada,91219748,91219748,user9748@test.net,2021-06-11,2024-04-06,Branch 12,+1-453-302-4002,38720,410 Maple Drive,91219748
+3572.0,inactive,Alex Doe,Checking,UK,63077991,63077991,user7991@sample.org,2021-07-12,2024-10-10,Branch 11,+1-684-149-9817,44020,512 Broadway,63077991
+8330.23,inactive,Katie Smith,Loan,Canada,06969917,06969917,user9917@example.com,2020-06-17,2024-03-24,Branch 19,+1-981-117-7921,46098,640 Maple Drive,06969917
+453.03,inactive,Alex Johnson,Credit,Canada,64375615,64375615,user5615@example.com,2022-11-09,2024-04-12,Branch 12,+1-624-178-6928,60093,408 Main St,64375615
+3091.13,inactive,Emily Johnson,Checking,Canada,70056593,70056593,user6593@test.net,2023-07-30,2024-11-23,Branch 20,+1-621-441-9467,79563,349 Broadway,70056593
+6797.29,active,Jane Johnson,Savings,Germany,51168733,51168733,user8733@test.net,2023-09-22,2024-10-30,Branch 15,+1-666-188-9821,68791,357 Broadway,51168733
+5658.78,active,Jane Smith,Savings,Germany,45692346,45692346,user2346@sample.org,2023-11-07,2024-05-13,Branch 18,+1-607-481-5475,74961,641 Broadway,45692346
+4368.53,active,Emily Smith,Savings,UK,82855608,82855608,user5608@example.com,2024-11-09,2024-07-12,Branch 5,+1-651-230-6530,47992,523 First Ave,82855608
+5404.08,active,Jane Brown,Loan,UK,61206141,61206141,user6141@example.com,2023-01-12,2024-10-22,Branch 14,+1-237-289-4857,82862,693 First Ave,61206141
+1983.87,inactive,Katie Doe,Credit,Germany,03248924,03248924,user8924@test.net,2024-04-06,2025-01-08,Branch 3,+1-218-753-8150,40378,954 Broadway,03248924
+4312.86,inactive,John Davis,Checking,Canada,47558633,47558633,user8633@example.com,2021-06-03,2024-06-20,Branch 9,+1-912-515-5864,72174,671 Main St,47558633
+5022.01,inactive,Chris Doe,Credit,Australia,44124534,44124534,user4534@example.com,2022-04-25,2025-01-30,Branch 16,+1-817-306-1123,97468,701 Broadway,44124534
+9012.88,active,Jane Davis,Savings,USA,08350051,08350051,user0051@test.net,2021-01-13,2024-08-12,Branch 16,+1-272-498-6792,97535,531 Maple Drive,08350051
+2615.74,active,Chris Johnson,Credit,UK,98356193,98356193,user6193@test.net,2022-11-25,2024-05-17,Branch 16,+1-992-991-1513,58051,527 Main St,98356193
+8679.61,inactive,John Brown,Loan,Australia,60656367,60656367,user6367@test.net,2022-01-01,2024-09-10,Branch 5,+1-339-986-5313,62992,538 Main St,60656367
+6445.97,active,John Brown,Checking,Germany,11630535,11630535,user0535@test.net,2020-12-14,2024-10-12,Branch 1,+1-392-465-3740,23683,238 Broadway,11630535
+213.2,inactive,Emily Smith,Checking,UK,79478623,79478623,user8623@example.com,2024-12-18,2024-06-12,Branch 8,+1-339-186-4966,65032,603 Main St,79478623
+7249.07,inactive,Jane Johnson,Credit,Canada,35752470,35752470,user2470@example.com,2024-04-02,2024-10-30,Branch 9,+1-311-572-7608,69885,970 Main St,35752470
+365.16,active,Chris Smith,Checking,USA,99758207,99758207,user8207@example.com,2021-08-22,2024-04-20,Branch 16,+1-605-254-1610,20452,309 Broadway,99758207
+9973.84,inactive,Katie Doe,Credit,Germany,43499591,43499591,user9591@test.net,2022-11-19,2024-12-06,Branch 17,+1-958-565-6224,90204,776 Broadway,43499591
+8727.64,active,Emily Johnson,Savings,UK,98296476,98296476,user6476@sample.org,2025-02-15,2024-05-12,Branch 18,+1-307-358-2785,69519,179 Broadway,98296476
+2980.46,active,Jane Davis,Checking,Australia,64920432,64920432,user0432@test.net,2022-06-25,2024-04-23,Branch 6,+1-678-747-1937,60793,186 First Ave,64920432
+2581.54,active,Chris Smith,Credit,Germany,75062830,75062830,user2830@sample.org,2024-12-24,2024-12-10,Branch 20,+1-640-470-6777,62312,859 Maple Drive,75062830
+3820.6,active,Jane Davis,Credit,Germany,55926980,55926980,user6980@sample.org,2021-01-31,2024-09-24,Branch 20,+1-722-715-7830,94389,322 First Ave,55926980
+3568.11,active,Chris Doe,Credit,Canada,81156568,81156568,user6568@test.net,2022-02-19,2024-06-24,Branch 1,+1-206-885-8657,84842,207 Main St,81156568
+3729.65,inactive,John Johnson,Checking,Australia,75105887,75105887,user5887@example.com,2021-07-13,2025-01-29,Branch 6,+1-922-402-2253,26689,322 First Ave,75105887
+3189.58,inactive,Alex Brown,Credit,Germany,81211124,81211124,user1124@example.com,2021-09-28,2024-06-11,Branch 11,+1-632-415-2479,80356,611 First Ave,81211124
+6215.12,active,Emily Doe,Credit,Canada,71193020,71193020,user3020@example.com,2020-04-22,2024-04-11,Branch 12,+1-722-240-7722,96724,291 Broadway,71193020
+1650.99,inactive,Katie Brown,Savings,USA,92182852,92182852,user2852@test.net,2020-06-29,2024-12-11,Branch 12,+1-494-646-5244,91113,272 Broadway,92182852
+8461.35,inactive,Emily Smith,Checking,UK,93007002,93007002,user7002@sample.org,2023-10-23,2025-01-20,Branch 2,+1-362-715-6822,29894,795 Maple Drive,93007002
+8125.9,inactive,Katie Doe,Loan,Germany,97380094,97380094,user0094@sample.org,2020-09-22,2025-01-21,Branch 14,+1-692-434-2558,27030,275 First Ave,97380094
+4770.07,inactive,Jane Brown,Savings,USA,92393866,92393866,user3866@test.net,2024-05-30,2025-02-03,Branch 19,+1-818-603-1953,85099,590 First Ave,92393866
+8528.77,active,John Smith,Checking,Australia,31336424,31336424,user6424@test.net,2024-06-10,2024-10-22,Branch 10,+1-386-485-6436,81686,256 Maple Drive,31336424
+2478.98,active,Jane Brown,Loan,USA,03252929,03252929,user2929@sample.org,2023-12-16,2025-02-03,Branch 13,+1-341-399-8569,16175,816 First Ave,03252929
+185.48,inactive,John Davis,Loan,Germany,64881456,64881456,user1456@example.com,2022-12-31,2024-04-05,Branch 14,+1-240-247-9876,24173,470 First Ave,64881456
+6195.89,inactive,Alex Brown,Loan,Canada,35480977,35480977,user0977@sample.org,2022-07-10,2024-05-14,Branch 2,+1-832-471-1468,74412,587 First Ave,35480977
+4584.51,inactive,Alex Davis,Credit,Australia,35555481,35555481,user5481@test.net,2021-07-23,2025-02-27,Branch 5,+1-223-835-5678,62563,917 Maple Drive,35555481
+5675.97,inactive,Alex Smith,Savings,Australia,88201283,88201283,user1283@test.net,2023-07-20,2024-11-26,Branch 17,+1-989-898-7195,85255,427 Broadway,88201283
+8994.4,inactive,Chris Johnson,Loan,Australia,05629074,05629074,user9074@sample.org,2023-06-13,2025-01-05,Branch 7,+1-906-962-2370,31559,690 Broadway,05629074
+9699.56,inactive,Alex Doe,Loan,USA,42309079,42309079,user9079@test.net,2024-01-06,2024-03-19,Branch 8,+1-410-702-6344,94786,818 Main St,42309079
+6348.19,inactive,Emily Doe,Loan,UK,01977714,01977714,user7714@sample.org,2025-02-07,2025-01-22,Branch 20,+1-401-221-1030,31026,212 Maple Drive,01977714
+7642.92,inactive,John Smith,Credit,Canada,39623387,39623387,user3387@test.net,2021-09-23,2024-05-16,Branch 19,+1-571-477-6848,96547,914 Broadway,39623387
+847.25,active,John Johnson,Checking,Australia,74024823,74024823,user4823@sample.org,2020-08-15,2024-05-17,Branch 6,+1-756-624-6061,11218,378 Maple Drive,74024823
+1615.55,inactive,Alex Smith,Savings,Germany,97654676,97654676,user4676@example.com,2020-06-04,2024-07-13,Branch 5,+1-792-287-4414,19828,633 Maple Drive,97654676
+7334.72,inactive,Chris Johnson,Loan,USA,70421731,70421731,user1731@sample.org,2021-09-04,2024-04-02,Branch 7,+1-370-497-1610,32298,803 Main St,70421731
+4319.34,active,John Brown,Loan,Canada,11023771,11023771,user3771@test.net,2024-04-12,2024-09-12,Branch 7,+1-771-169-6120,58905,667 Maple Drive,11023771
+4465.19,active,Chris Brown,Credit,USA,16486624,16486624,user6624@sample.org,2024-01-02,2025-01-19,Branch 18,+1-704-498-5969,25471,384 Broadway,16486624
+3092.99,inactive,Jane Smith,Loan,Australia,45465086,45465086,user5086@example.com,2023-10-09,2024-12-11,Branch 19,+1-869-132-8640,17951,236 Broadway,45465086
+6077.49,inactive,Jane Smith,Credit,Germany,60592576,60592576,user2576@sample.org,2024-05-27,2025-02-03,Branch 16,+1-786-562-3548,84948,335 First Ave,60592576
+1859.8,active,Chris Brown,Savings,Germany,49789726,49789726,user9726@example.com,2023-08-03,2025-01-11,Branch 9,+1-698-304-6944,99268,835 Broadway,49789726
+6272.89,active,John Davis,Credit,Australia,08565900,08565900,user5900@example.com,2022-01-29,2024-06-15,Branch 2,+1-642-591-4200,64301,537 Maple Drive,08565900
+1746.25,active,Chris Smith,Loan,Australia,33249998,33249998,user9998@sample.org,2021-11-11,2024-04-07,Branch 13,+1-283-709-6395,94701,214 Maple Drive,33249998
+647.62,active,Emily Doe,Savings,Australia,84616423,84616423,user6423@test.net,2020-07-30,2024-07-05,Branch 15,+1-390-159-7864,51160,357 Maple Drive,84616423
+3310.27,active,Katie Brown,Savings,Australia,41662339,41662339,user2339@sample.org,2022-04-07,2024-10-04,Branch 9,+1-633-106-1841,37284,304 Maple Drive,41662339
+2319.09,active,Katie Doe,Credit,Australia,53319072,53319072,user9072@example.com,2023-01-24,2024-08-10,Branch 19,+1-522-643-8868,46849,541 Main St,53319072
+8891.03,inactive,Katie Davis,Savings,USA,81565696,81565696,user5696@test.net,2023-11-19,2024-03-22,Branch 10,+1-995-742-8654,82089,623 Main St,81565696
+558.99,active,Katie Johnson,Savings,Germany,39013020,39013020,user3020@test.net,2025-01-09,2024-04-21,Branch 18,+1-325-984-9802,15035,129 Main St,39013020
+1774.37,inactive,John Smith,Loan,Canada,54875991,54875991,user5991@test.net,2020-07-23,2024-07-14,Branch 1,+1-728-736-5266,27232,135 First Ave,54875991
+5491.71,inactive,Alex Doe,Checking,Canada,32424253,32424253,user4253@example.com,2024-01-19,2024-06-12,Branch 6,+1-411-393-6229,63872,950 First Ave,32424253
+4815.86,inactive,Emily Johnson,Checking,Canada,08373382,08373382,user3382@example.com,2022-03-06,2024-04-16,Branch 19,+1-442-834-6510,97552,347 Main St,08373382
+468.06,inactive,Emily Doe,Loan,Australia,41583663,41583663,user3663@test.net,2024-07-23,2024-03-17,Branch 15,+1-310-236-8678,34661,410 Broadway,41583663
+82.45,active,John Smith,Credit,USA,27452735,27452735,user2735@example.com,2022-07-03,2024-05-27,Branch 7,+1-383-444-2779,14684,246 First Ave,27452735
