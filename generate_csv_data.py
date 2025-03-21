@@ -1,177 +1,152 @@
-# Language: python
+import concurrent.futures
+import json
+import os.path
+from typing import List
+from dotenv import load_dotenv
 
 import pandas as pd
-import numpy as np
 import random
 import string
-from datetime import datetime, timedelta
+
+from openai import OpenAI
+from openai.types.chat import ChatCompletion
+
+load_dotenv()
 
 
-# --- Helper Functions ---
-
-def random_date(start, end):
-    """Return a random datetime between two datetime objects."""
-    delta = end - start
-    random_days = random.randrange(delta.days)
-    return start + timedelta(days=random_days)
+client = OpenAI()
 
 
-def generate_account_variants():
-    """
-    Programmatically generate a list of account ID column header variations.
-    We'll combine several base words and suffixes with optional punctuation and spacing.
-    """
-    bases = ["account", "acct", "acc", "client", "customer", "bank", "ledger", "record", "profile"]
-    suffixes = ["id", "ID", "number", "num", "no", "identifier", "identification"]
-    variants = set()
-
-    # add some simple ones
-    basic = [
-        "account", "Account", "account id", "Account ID", "acct id", "Acct ID",
-        "account number", "Account Number", "acnt", "ACNT", "account#", "acct#"
-    ]
-    variants.update(basic)
-
-    # combine bases and suffixes with various punctuation and spacing
-    for base in bases:
-        for suf in suffixes:
-            for sep in [" ", "_", "-", ""]:
-                v1 = f"{base}{sep}{suf}"
-                v2 = f"{base.capitalize()}{sep}{suf.upper() if random.choice([True, False]) else suf}"
-                variants.add(v1)
-                variants.add(v2)
-                # sometimes add a trailing colon
-                variants.add(v1 + ":")
-                variants.add(v2 + ":")
-
-    # Add a few random extra variations with noise (e.g. extra words)
-    extras = ["no.", "num.", "ID", "Code"]
-    for base in bases:
-        for extra in extras:
-            v = f"{base} {extra}"
-            variants.add(v)
-            variants.add(v.capitalize())
-            variants.add(v + " (unique)")
-
-    return list(variants)
 
 
-def generate_random_account_id():
-    """Generate a random account id as a string of 8 digits."""
-    return "".join(random.choices(string.digits, k=8))
+def get_random_date(start_year=2000, end_year=2023):
+    year = random.randint(start_year, end_year)
+    month = random.randint(1, 12)
+    day = random.randint(1, 28)
+    return f"{year}-{month:02d}-{day:02d}"
 
 
-def generate_random_email(name):
-    """Generate a fake email address from a name."""
-    domains = ["example.com", "sample.org", "test.net"]
-    return f"{name.lower()}@{random.choice(domains)}"
+def get_random_email() -> str:
+    user_length = random.randint(6, 12)
+    user_chars = string.ascii_lowercase + string.digits + "._"
+    username = ''.join(random.choices(user_chars, k=user_length))
+
+    if username[0] in "._":
+        username = random.choice(string.ascii_lowercase + string.digits) + username[1:]
+
+    domains = ["gmail", "yahoo", "outlook", "hotmail", "example"]
+    tlds = ["com", "net", "org", "io", "co"]
+
+    email = f"{username}@{random.choice(domains)}.{random.choice(tlds)}"
+    return email
 
 
-def get_unique_column_name(base_name, existing_names, possibilities):
-    """
-    Return a random column name for the given base_name from possibilities that is not
-    already in existing_names. If not possible, return base_name.
-    """
-    choices = possibilities.copy()
-    random.shuffle(choices)
-    for candidate in choices:
-        if candidate not in existing_names:
-            return candidate
-    return base_name
+def get_random_street_address():
+    street_names = ["Main", "Oak", "Pine", "Maple", "Elm", "Cedar", "View", "Washington", "Lake", "Hill", "Sunset", "Park"]
+    street_types = ["St", "Ave", "Blvd", "Rd", "Dr", "Ln", "Ct", "Pl", "Terrace", "Way"]
+    return f"{random.randint(1, 9999)} {random.choice(street_names)} {random.choice(street_types)}"
 
 
-# --- Main Script ---
+def get_random_phone_number() -> str:
+    # Generate area code (first digit cannot be 0 or 1)
+    first = random.randint(2, 9)
+    second = random.randint(0, 9)
+    third = random.randint(0, 9)
+    area_code = f"{first}{second}{third}"
+
+    # Generate the next three digits for the exchange, also first digit can't be 0 or 1 typically
+    first_ex = random.randint(2, 9)
+    second_ex = random.randint(0, 9)
+    third_ex = random.randint(0, 9)
+    exchange = f"{first_ex}{second_ex}{third_ex}"
+
+    # Generate the last four digits; no restrictions here
+    subscriber = random.randint(0, 9999)
+    subscriber_str = f"{subscriber:04d}"  # Ensure it is 4 digits, padded with zeros if needed
+
+    return f"({area_code}) {exchange}-{subscriber_str}"
+
+
+def get_random_value(col: str):
+    if col == "account_id":
+        return str(random.randint(10000, 99999))
+    elif col == "balance":
+        return f"{random.uniform(10, 10000):.2f}"
+    elif col == "open_date":
+        return get_random_date(2010, 2023)
+    elif col == "status":
+        return random.choice(["active", "inactive", "pending"])
+    elif col == "email":
+        return get_random_email()
+    elif col == "phone":
+        return get_random_phone_number()
+    elif col == "address":
+        return get_random_street_address()
+    elif col == "customer_name":
+        return random.choice(["John Doe", "Jane Smith", "Alice Johnson", "Bob Brown", "Carol White"])
+    elif col == "last_activity":
+        return get_random_date(2015, 2023)
+    else:
+        raise ValueError(f"Unhandled column: {col}")
+
+
+def get_column_name_variation(column: str, previous_names: List):
+    prompt = (
+        "You are a data analysis assistant that specializes in identifying column types in datasets. "
+        "Given the following column name, provide a human-readable variation of it. "
+        "For example, 'account_id' could become 'account no.' or 'account number'. "
+        "Ensure that the variation uses a mix of separators including hyphens (-), underscores (_), other separators occasionally, "
+        "and vary the capitalization and punctuation to make the name appear more natural and diverse. "
+        "Return ONLY the new column name with no additional text or formatting. "
+        "Only provide a single column name, do not return multiple variations."
+        f"Column name: {column} "
+        f"Do NOT return any of the following values: {previous_names}"
+    )
+
+    response: ChatCompletion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+    )
+
+    response_content = response.choices[0].message.content.strip()
+    return response_content
+
+
 def main():
-    random.seed(42)
-    np.random.seed(42)
+    num_files = 5
+    num_rows = 50
 
-    # Create a list of account-related column header variations.
-    account_variants = generate_account_variants()
-    print(f"Generated {len(account_variants)} account_id header variants.")
+    columns = ['account_id', 'balance', 'open_date', 'status', 'email', 'phone', 'address', 'customer_name', 'last_activity']
 
-    # Define the mapping for non-critical (other) columns to possible header variations.
-    other_columns_variations = {
-        "balance": ["balance", "Balance", "current balance", "acct balance"],
-        "open_date": ["open_date", "Open Date", "start date", "account open"],
-        "status": ["status", "Status", "account status", "acct status"],
-        "email": ["email", "Email", "e-mail", "E-mail"],
-        "phone": ["phone", "Phone", "contact", "mobile"],
-        "address": ["address", "Address", "street", "residence"],
-        "country": ["country", "Country", "nation"],
-        "zip_code": ["zip_code", "Zip Code", "postal code"],
-        "account_type": ["account_type", "Account Type", "acct type", "type"],
-        "customer_name": ["customer_name", "Customer", "Name", "client name"],
-        "branch": ["branch", "Branch", "office", "location"],
-        "last_activity": ["last_activity", "Last Activity", "recent activity", "activity date"]
-    }
+    # Create dictionary with each column mapped to an empty variations list
+    generated_column_variations = {col: [] for col in columns}
 
-    num_files = 500  # Number of CSV files to generate
-    num_rows = 100  # Number of rows per CSV
-    output_prefix = "account_data_"
+    def process_column(col):
+        variation = get_column_name_variation(col, generated_column_variations[col])
+        generated_column_variations[col].append(variation)
+        return col, variation
 
-    for file_index in range(1, num_files + 1):
-        # Decide how many account-related columns to include in this file.
-        num_account_cols = random.randint(1, 5)
-        selected_account_cols = random.sample(account_variants, num_account_cols)
+    for file_number in range(1, num_files + 1):
+        data = [[get_random_value(col) for col in columns] for _ in range(num_rows)]
+    
+        # Create a thread for each column and ask openai to generate a variation
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            results = executor.map(process_column, columns)
+        column_variations = {col: variation for col, variation in results}
+    
+        print(f"\nGenerated column variations:\n{json.dumps(column_variations, indent=2)}")
+    
+        # Create the DataFrame using the generated variations for column names
+        df = pd.DataFrame(data, columns=[column_variations[col] for col in columns])
+        filename = os.path.join("csv_data", f"sample_data_{file_number}.csv")
+        df.to_csv(filename, index=False)
+        print(f"Successfully saved {filename}")
+    
+    with open('column_variations.json', 'w') as f:
+        json.dump(generated_column_variations, f, indent=2)
 
-        # Generate account id values for each row.
-        account_ids = [generate_random_account_id() for _ in range(num_rows)]
-
-        # Prepare the data dictionary.
-        data = {}
-        # Add the account-related columns (each column gets the same set of account_ids)
-        for col in selected_account_cols:
-            data[col] = account_ids
-
-        # Generate data for the other columns using normalized keys.
-        fixed_data = {}
-        fixed_data["balance"] = np.round(np.random.uniform(10.0, 10000.0, size=num_rows), 2)
-        start_date = datetime.now() - timedelta(days=5 * 365)
-        end_date = datetime.now()
-        fixed_data["open_date"] = [random_date(start_date, end_date).strftime("%Y-%m-%d") for _ in range(num_rows)]
-        fixed_data["status"] = [random.choice(["active", "inactive"]) for _ in range(num_rows)]
-        fixed_data["email"] = [generate_random_email(f"user{acc[-4:]}") for acc in account_ids]
-        fixed_data["phone"] = [
-            f"+1-{random.randint(200, 999)}-{random.randint(100, 999)}-{random.randint(1000, 9999)}"
-            for _ in range(num_rows)
-        ]
-        fixed_data["address"] = [
-            f"{random.randint(100, 999)} {random.choice(['Main St', 'Broadway', 'First Ave', 'Maple Drive'])}" for _ in
-            range(num_rows)]
-        countries = ["USA", "Canada", "UK", "Australia", "Germany"]
-        fixed_data["country"] = [random.choice(countries) for _ in range(num_rows)]
-        fixed_data["zip_code"] = [str(random.randint(10000, 99999)) for _ in range(num_rows)]
-        fixed_data["account_type"] = [random.choice(["Savings", "Checking", "Credit", "Loan"]) for _ in range(num_rows)]
-        first_names = ["John", "Jane", "Alex", "Emily", "Chris", "Katie"]
-        last_names = ["Smith", "Doe", "Johnson", "Brown", "Davis"]
-        fixed_data["customer_name"] = [f"{random.choice(first_names)} {random.choice(last_names)}" for _ in
-                                       range(num_rows)]
-        fixed_data["branch"] = [f"Branch {random.randint(1, 20)}" for _ in range(num_rows)]
-        recent_start = datetime.now() - timedelta(days=365)
-        recent_end = datetime.now()
-        fixed_data["last_activity"] = [random_date(recent_start, recent_end).strftime("%Y-%m-%d") for _ in
-                                       range(num_rows)]
-
-        # Now assign random header variations for each of the other columns,
-        # ensuring we don't conflict with account columns or duplicate headers.
-        used_columns = set(selected_account_cols)
-        for norm_col, variants in other_columns_variations.items():
-            col_name = get_unique_column_name(norm_col, used_columns, variants)
-            data[col_name] = fixed_data[norm_col]
-            used_columns.add(col_name)
-
-        # Create the DataFrame.
-        df = pd.DataFrame(data)
-
-        # Shuffle the columns order so that the account-related columns and others are randomly mixed.
-        cols = list(df.columns)
-        random.shuffle(cols)
-        df = df[cols]
-
-        # Save the CSV to disk.
-        file_name = f"{output_prefix}{file_index}.csv"
-        df.to_csv('csv_data/' + file_name, index=False)
-        print(f"Saved file: {file_name}")
 
 
 if __name__ == '__main__':

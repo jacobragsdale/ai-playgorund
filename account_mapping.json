@@ -1,56 +1,65 @@
 {
-  "historical_account_ids": [
-    "Customer IDENTIFIER:",
-    "account-identifier:",
-    "ledger-identifier:",
-    "Bank_IDENTIFIER",
-    "AccID:",
-    "customer ID:",
-    "acctidentifier:",
-    "client-ID",
-    "Accidentifier",
-    "Acct_IDENTIFIER:",
-    "Acct-no",
-    "record identifier",
-    "Acc-ID",
-    "Profile_identification",
+  "account_id": [
+    "acct-ID",
+    "account-identifier",
     "account-number",
-    "ProfileIDENTIFIER",
-    "Acc no.",
-    "Client NUMBER:",
-    "accidentifier",
-    "Record-NUM:",
-    "Bank ID",
-    "customer ID (unique)",
-    "record-no",
-    "acc num",
-    "acc_ID:",
-    "account num",
-    "RecordIDENTIFICATION",
-    "acctidentifier",
-    "acc num.",
-    "Acct_NUMBER",
-    "Acct-IDENTIFICATION",
-    "clientnum:",
-    "accountidentifier",
-    "Acct-ID:",
-    "Ledger_IDENTIFICATION:",
-    "account-id",
-    "account num:",
-    "ledger ID",
-    "Customer ID:",
-    "Acc number",
-    "client_identifier:",
-    "account Code",
-    "Acct_IDENTIFIER",
-    "record Code (unique)",
-    "Client-IDENTIFICATION:",
-    "Customer_ID",
-    "acct identification:",
-    "Bank_NO",
-    "customer_ID",
-    "acc-identification",
-    "account no",
-    "AccIDENTIFICATION"
+    "account id",
+    "account_no."
+  ],
+  "balance": [
+    "funds_available",
+    "total-balance",
+    "account balance",
+    "balance_amount",
+    "balance - total"
+  ],
+  "open_date": [
+    "date-opened",
+    "open - date_!",
+    "opening_date",
+    "open - date",
+    "date of opening"
+  ],
+  "status": [
+    "status level",
+    "status.state",
+    "status-info",
+    "status - update",
+    "current-status"
+  ],
+  "email": [
+    "email-addr",
+    "mail_address",
+    "email_address",
+    "e-mail contact",
+    "contact-email"
+  ],
+  "phone": [
+    "telephone#number",
+    "mobile-phone",
+    "phone-number",
+    "contact_number",
+    "phone number"
+  ],
+  "address": [
+    "home_address",
+    "mailing address",
+    "address-line",
+    "location_address",
+    "street_address"
+  ],
+  "customer_name": [
+    "customer's Name",
+    "cust_name",
+    "customer-name",
+    "client_name",
+    "customer - name"
+  ],
+  "last_activity": [
+    "latest_activity",
+    "recent-activity-info",
+    "last activity date",
+    "most_recent_activity",
+    "last - activity_time"
   ]
 }
