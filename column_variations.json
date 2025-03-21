@@ -1,0 +1,65 @@
+{
+  "account_id": [
+    "account-number",
+    "account id",
+    "account_no.",
+    "acct-ID",
+    "account-identifier"
+  ],
+  "balance": [
+    "account balance",
+    "balance_amount",
+    "balance - total",
+    "funds_available",
+    "total-balance"
+  ],
+  "open_date": [
+    "opening_date",
+    "open - date",
+    "date of opening",
+    "date-opened",
+    "open - date_!"
+  ],
+  "status": [
+    "status-info",
+    "status - update",
+    "current-status",
+    "status level",
+    "status.state"
+  ],
+  "email": [
+    "email_address",
+    "e-mail contact",
+    "contact-email",
+    "email-addr",
+    "mail_address"
+  ],
+  "phone": [
+    "phone-number",
+    "contact_number",
+    "phone number",
+    "telephone#number",
+    "mobile-phone"
+  ],
+  "address": [
+    "address-line",
+    "location_address",
+    "street_address",
+    "home_address",
+    "mailing address"
+  ],
+  "customer_name": [
+    "customer-name",
+    "client_name",
+    "customer - name",
+    "customer's Name",
+    "cust_name"
+  ],
+  "last_activity": [
+    "last activity date",
+    "most_recent_activity",
+    "last - activity_time",
+    "latest_activity",
+    "recent-activity-info"
+  ]
+}
