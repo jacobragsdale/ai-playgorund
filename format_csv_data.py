@@ -1,11 +1,11 @@
-import concurrent.futures
-import pandas as pd
 import glob
-import os
 import json
+import os
+
+import pandas as pd
+from dotenv import load_dotenv
 from openai import OpenAI
 from openai.types.chat import ChatCompletion
-from dotenv import load_dotenv
 
 load_dotenv()
 
