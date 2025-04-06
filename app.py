@@ -358,7 +358,7 @@ def show_column_mapping_form(df, ai_mappings):
                     pass
 
             # Display the dropdown with marked options
-            selected_col = st.selectbox(
+            st.selectbox(
                 f"{column.name} ({column.data_type}):",
                 options=marked_columns,
                 index=default_idx,
