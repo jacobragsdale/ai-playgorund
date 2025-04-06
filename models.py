@@ -10,10 +10,11 @@ class TargetColumn:
     description: str  # Description of what this column represents
     examples: List[str] = field(default_factory=list)  # Example values for this column
     historical_variations: List[str] = field(default_factory=list)  # Known variations of column names
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
         return asdict(self)
+
 
 # Default target columns to use when database columns aren't available
 DEFAULT_TARGET_COLUMNS = [
@@ -55,4 +56,4 @@ AVAILABLE_TABLES = [
     {"schema": "dbo", "name": "Customers"},
     {"schema": "sales", "name": "Transactions"}
     # Add more tables as needed
-] 
+]

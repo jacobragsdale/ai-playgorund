@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from ai_utils import identify_target_sheet, identify_column
-from db_utils import is_db_available, load_table_columns
+from db_utils import load_table_columns
 from models import DEFAULT_TARGET_COLUMNS
 
 

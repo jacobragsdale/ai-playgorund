@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, List
 
 import pandas as pd
 import streamlit as st
@@ -41,7 +41,7 @@ def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_inf
                 # Get column names and a sample of data
                 sheet_data[sheet_name] = {
                     "columns": list(df.columns),
-                    "sample": df.head(3).to_dict(orient="records")
+                    "sample": df.head(2).to_dict(orient="records")
                 }
             except Exception as e:
                 st.warning(f"Error reading sheet {sheet_name}: {e}")
@@ -78,11 +78,9 @@ def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_inf
             "Respond with ONLY a valid JSON object in the following format:\n"
             "```\n"
             "{\n"
-            '  "target_sheet": "sheet_name_here",\n'
-            '  "confidence": 0.95\n'
+            '  "target_sheet": "sheet_name_here"\n'
             "}\n"
             "```\n"
-            "The confidence score should be between 0 and 1, where 1 is absolute certainty.\n"
         )
 
         # Call OpenAI to get the answer
@@ -107,7 +105,6 @@ def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_inf
                 return None
             
             target_sheet = result["target_sheet"]
-            confidence = result.get("confidence", 0)
             
             if target_sheet not in sheet_names:
                 st.error(f"Identified sheet '{target_sheet}' not found in the Excel file.")

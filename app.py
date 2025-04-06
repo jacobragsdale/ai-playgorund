@@ -1,8 +1,7 @@
 import streamlit as st
-import pandas as pd
 from dotenv import load_dotenv
-from ai_utils import identify_column, identify_target_sheet
 
+from ai_utils import identify_column
 from controller import (
     initialize_session_state,
     load_historical_variations,
