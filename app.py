@@ -185,7 +185,7 @@ def process_and_display_data(excel_data, uploaded_file):
 
     # Display formatted data if available
     if "formatted_df" in st.session_state and st.session_state.formatted_df is not None:
-        show_formatted_data(st.session_state.formatted_df, uploaded_file)
+        show_formatted_data(st.session_state.formatted_df)
 
 
 def run_ai_analysis(excel_data):
@@ -253,7 +253,7 @@ def show_sheet_override(excel_data, target_sheet):
     marked_sheets[target_sheet_index] = f"{target_sheet} (AI suggestion)"
 
     selected_sheet = st.selectbox(
-        "Select the sheet containing target data:",
+        "If the target sheet was not correctly identified, update it here. Column mappings will be rerun with the newly select sheet",
         options=marked_sheets,
         index=target_sheet_index,
         key="sheet_selector",
@@ -371,7 +371,7 @@ def show_column_mapping_form(df, ai_mappings):
             st.session_state.formatted_df = formatted_df
 
 
-def show_formatted_data(formatted_df, uploaded_file):
+def show_formatted_data(formatted_df):
     """Display the formatted data with row deletion functionality"""
     st.markdown("---")
     st.subheader("Formatted Data")
@@ -396,7 +396,7 @@ def show_formatted_data(formatted_df, uploaded_file):
     show_data_editor(formatted_df, deletion_status)
 
     # Show download and save options
-    show_download_save_options(formatted_df, uploaded_file)
+    show_download_save_options(formatted_df)
 
 
 def show_delete_button(formatted_df, deletion_status):
@@ -470,43 +470,23 @@ def show_data_editor(formatted_df, deletion_status):
             deletion_status.empty()  # Don't show any message when no rows are selected
 
 
-def show_download_save_options(formatted_df, uploaded_file):
+def show_download_save_options(formatted_df):
     """Show download and save options for the formatted data"""
     st.subheader("Download or Save Data")
-    st.write("You can either download this data as a CSV file or save it directly to the database.")
+    st.write(f"Save the formatted data as displayed to {st.session_state.selected_table_schema}.{st.session_state.selected_table}")
 
-    # Generate CSV data for download
-    csv = formatted_df.to_csv(index=False)
-
-    # Create container for buttons
-    button_container = st.container()
-
-    # Add buttons side by side
-    col1, col2, col3 = button_container.columns([1, 1, 2])
-
-    # Download button
-    with col1:
-        st.download_button(
-            label="Download formatted data as CSV",
-            data=csv,
-            file_name=f"formatted_{uploaded_file.name.split('.')[0]}.csv",
-            mime="text/csv",
+    if st.button(f"Write to DB table {st.session_state.selected_table_schema}.{st.session_state.selected_table}", type="primary"):
+        db_utils = DatabaseUtils()
+        success, message = db_utils.save_to_database(
+            formatted_df,
+            st.session_state.selected_table,
+            st.session_state.selected_table_schema
         )
 
-    # Add button to save to database
-    with col2:
-        if st.button(f"Save to {st.session_state.selected_table_schema}.{st.session_state.selected_table}", type="primary"):
-            db_utils = DatabaseUtils()
-            success, message = db_utils.save_to_database(
-                formatted_df,
-                st.session_state.selected_table,
-                st.session_state.selected_table_schema
-            )
-
-            if success:
-                st.success(message)
-            else:
-                st.error(message)
+        if success:
+            st.success(message)
+        else:
+            st.error(message)
 
 
 def show_sidebar():
