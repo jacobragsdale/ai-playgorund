@@ -68,10 +68,10 @@ def load_historical_variations():
 
 def select_database_table(schema: str, table: str) -> bool:
     """
-    Select a database table and load its columns
+    Select a database table and load its column definitions
     
     Args:
-        schema: Database schema
+        schema: Schema name
         table: Table name
         
     Returns:
@@ -83,7 +83,7 @@ def select_database_table(schema: str, table: str) -> bool:
 
     # Load column definitions from the selected table
     db_utils = DatabaseUtils()
-    target_columns = db_utils.load_table_columns(schema, table)
+    target_columns = db_utils.generate_target_columns_from_db(table, schema)
     if target_columns:
         # Update session state
         st.session_state.TARGET_COLUMNS = target_columns
