@@ -154,15 +154,36 @@ def show_file_upload():
         st.subheader("All Excel Sheets")
         st.write(f"This Excel file contains {len(excel_data['sheets'])} sheets:")
 
+        # Get the AI-suggested sheet if available
+        ai_suggested_sheet = st.session_state.get("ai_suggested_sheet")
+        
+        # Create an ordered list of sheets, with the AI-suggested sheet first
+        ordered_sheets = excel_data["sheets"].copy()
+        if ai_suggested_sheet in ordered_sheets:
+            # Move the AI-suggested sheet to the beginning
+            ordered_sheets.remove(ai_suggested_sheet)
+            ordered_sheets.insert(0, f"{ai_suggested_sheet} (AI suggestion)")
+        
         # Create tabs for each sheet
-        tabs = st.tabs(excel_data["sheets"])
+        tabs = st.tabs(ordered_sheets)
 
         # Display each sheet in its own tab
-        for i, sheet_name in enumerate(excel_data["sheets"]):
+        for i, tab_name in enumerate(ordered_sheets):
+            # Get the actual sheet name (removing the AI suggestion marker if present)
+            if "(AI suggestion)" in tab_name:
+                sheet_name = tab_name.split(" (AI suggestion)")[0]
+            else:
+                sheet_name = tab_name
+                
             df = excel_data["dataframes"][sheet_name]
 
             with tabs[i]:
-                st.write(f"### Sheet: {sheet_name}")
+                if sheet_name == ai_suggested_sheet:
+                    st.write(f"### Sheet: {sheet_name} (AI suggestion)")
+                    st.info("This sheet was automatically identified as containing the target data")
+                else:
+                    st.write(f"### Sheet: {sheet_name}")
+                
                 st.write(f"Contains {df.shape[0]} rows and {df.shape[1]} columns")
                 st.dataframe(df, use_container_width=True)
 
@@ -195,6 +216,12 @@ def show_file_upload():
                             formatted_df = apply_column_mappings(df, ai_mappings)
                             st.session_state.formatted_df = formatted_df
                             st.session_state.user_column_mappings = ai_mappings
+                            
+                        # Store the AI-suggested sheet for highlighting in the Excel sheets section
+                        st.session_state.ai_suggested_sheet = target_sheet
+                        
+                        # Force a rerun to update the Excel sheets section
+                        st.rerun()
             else:
                 # Use cached results
                 results = st.session_state.analysis_results
