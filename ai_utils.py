@@ -135,6 +135,9 @@ def identify_column(df: pd.DataFrame, target_column: TargetColumn, historical_ma
     with st.spinner(f"Identifying column for {target_column.name}..."):
         sample_data = df.head(3).to_dict(orient="records")
         
+        # Get list of available columns
+        available_columns = list(df.columns)
+        
         # Combine historical variations from both sources
         all_variations = target_column.historical_variations.copy()
         if historical_mappings and target_column.name in historical_mappings:
@@ -149,11 +152,15 @@ def identify_column(df: pd.DataFrame, target_column: TargetColumn, historical_ma
             f"Example values: {', '.join(target_column.examples)}\n\n"
             "Given the following information:\n"
             "1. Sample data rows (first rows of the dataframe along with column names)\n"
-            "2. Historical column names that have been identified as matching this column type in the past\n\n"
+            "2. Historical column names that have been identified as matching this column type in the past\n"
+            "3. The list of available columns in the dataframe\n\n"
             "INSTRUCTIONS:\n"
             "- Analyze the column names and data patterns in the sample rows\n"
             f"- Select the most likely column that represents {target_column.name}\n"
-            "- Consider both semantic similarity of column names and the data values\n\n"
+            "- Consider both semantic similarity of column names and the data values\n"
+            "- You MUST select a column name from the list of available columns\n"
+            "- If none of the columns seem to match, select the closest possible match from the available columns\n\n"
+            "CRITICAL: Your response MUST be one of these exact column names: " + ", ".join([f'"{col}"' for col in available_columns]) + "\n\n"
             "RESPONSE FORMAT:\n"
             "Respond with ONLY a valid JSON object in the following format:\n"
             "```\n"
@@ -161,6 +168,8 @@ def identify_column(df: pd.DataFrame, target_column: TargetColumn, historical_ma
             f'  "{target_column.name}": "column_name_here"\n'
             "}\n"
             "```\n\n"
+            "Available columns:\n"
+            f"{json.dumps(available_columns)}\n\n"
             "Sample rows:\n"
             f"{json.dumps(sample_data, indent=2)}\n\n"
             "Historical column names for this type:\n"
@@ -173,7 +182,7 @@ def identify_column(df: pd.DataFrame, target_column: TargetColumn, historical_ma
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a data analysis assistant that specializes in identifying column types in datasets. Always respond with ONLY the requested JSON format."
+                        "content": "You are a data analysis assistant that specializes in identifying column types in datasets. You must only select from the available columns provided. Always respond with ONLY the requested JSON format."
                     },
                     {"role": "user", "content": prompt}
                 ],

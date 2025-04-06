@@ -213,29 +213,83 @@ def show_file_upload():
             
             # Define callback for sheet selection change
             def on_sheet_change():
+                # Extract the original sheet name (without AI suggestion marker)
                 sheet_name = st.session_state.sheet_selector
+                if "(AI suggestion)" in sheet_name:
+                    sheet_name = sheet_name.split(" (AI suggestion)")[0]
+                
+                # Update selected sheet DataFrame
                 st.session_state.selected_sheet_df = excel_data["dataframes"][sheet_name]
-                # Reset column mappings when sheet changes
+                
+                # Reset column mappings
                 st.session_state.user_column_mappings = {}
                 st.session_state.formatted_df = None
+                
+                # Set a flag to indicate that sheet has changed and needs analysis
+                st.session_state.sheet_changed = True
+            
+            # Create a version of sheet names with AI suggestion marked
+            marked_sheets = excel_data["sheets"].copy()
+            target_sheet_index = excel_data["sheets"].index(target_sheet)
+            marked_sheets[target_sheet_index] = f"{target_sheet} (AI suggestion)"
             
             selected_sheet = st.selectbox(
                 "Select the sheet containing target data:",
-                options=excel_data["sheets"],
-                index=excel_data["sheets"].index(target_sheet),
+                options=marked_sheets,
+                index=target_sheet_index,
                 key="sheet_selector",
                 on_change=on_sheet_change
             )
+            
+            # Extract the original sheet name (without AI suggestion marker)
+            if "(AI suggestion)" in selected_sheet:
+                selected_sheet = selected_sheet.split(" (AI suggestion)")[0]
 
             # Get the dataframe for the selected sheet
             df = excel_data["dataframes"][selected_sheet]
             st.session_state.selected_sheet_df = df
+            
+            # Check if sheet has changed and needs AI analysis
+            if "sheet_changed" in st.session_state and st.session_state.sheet_changed:
+                # Re-run AI analysis for the new sheet
+                with st.spinner(f"Analyzing sheet '{selected_sheet}'..."):
+                    # Get the dataframe for the new sheet
+                    new_df = excel_data["dataframes"][selected_sheet]
+                    
+                    # Run AI analysis on just this sheet
+                    from ai_utils import identify_column
+                    
+                    # Create column mappings for the new sheet
+                    new_mappings = {}
+                    
+                    # For each target column, try to identify the corresponding column in the new sheet
+                    for column in st.session_state.TARGET_COLUMNS:
+                        guessed_column = identify_column(new_df, column)
+                        if guessed_column:
+                            new_mappings[column.name] = guessed_column
+                    
+                    # Store the new mappings in the session state
+                    if new_mappings:
+                        # Update the results with the new mappings
+                        results["column_mappings"] = new_mappings
+                        # Update the UI with the new mappings
+                        st.session_state.user_column_mappings = new_mappings
+                        
+                        # Apply the new mappings to get a formatted DataFrame
+                        formatted_df = apply_column_mappings(new_df, new_mappings)
+                        st.session_state.formatted_df = formatted_df
+                        
+                        # Instead of manipulating session state directly, we'll let the
+                        # selectbox widgets handle their own state based on the updated ai_mappings
+                
+                # Reset the flag
+                st.session_state.sheet_changed = False
 
             # Show column mapping section
             st.markdown("---")
             st.subheader("Column Mapping")
 
-            # Display the AI mappings
+            # Use the updated AI mappings
             ai_mappings = results["column_mappings"]
 
             # Create a form for column mappings to batch the updates
@@ -255,6 +309,9 @@ def show_file_upload():
                         # Create a version of the dropdown options with stars for AI-suggested mappings
                         marked_columns = df_columns_with_none.copy()
                         
+                        # Get current value from session state if available
+                        key = f"col_map_{column.name}"
+                        
                         # Set default to the AI suggestion if available
                         default_idx = 0
                         ai_suggestion = None
@@ -270,16 +327,15 @@ def show_file_upload():
                                         marked_columns[j] = f"{col_name} (AI suggestion)"
                             except ValueError:
                                 default_idx = 0
-
+                        
                         # Get current value from session state if available
-                        current_value = None
-                        key = f"col_map_{column.name}"
-                        if key in st.session_state:
+                        if key in st.session_state and isinstance(st.session_state[key], str):
                             try:
-                                # Find the index in original list (without stars)
+                                # Find the index in original list (without stars or AI suggestion text)
                                 orig_value = st.session_state[key].replace("* ", "").split(" (AI suggestion)")[0]
-                                current_idx = df_columns_with_none.index(orig_value)
-                                default_idx = current_idx
+                                if orig_value in df_columns_with_none:
+                                    current_idx = df_columns_with_none.index(orig_value)
+                                    default_idx = current_idx
                             except (ValueError, IndexError):
                                 pass
 
@@ -314,11 +370,90 @@ def show_file_upload():
                 # Show formatted data
                 st.markdown("---")
                 st.subheader("Formatted Data")
-                st.dataframe(formatted_df, use_container_width=True)
+                
+                # Add row deletion functionality
+                if "rows_to_delete" not in st.session_state:
+                    st.session_state.rows_to_delete = set()
+                
+                # Create a container for the data and deletion controls
+                deletion_status = st.empty()  # Placeholder for dynamic status message
+                
+                # Display the current selection count (will update dynamically)
+                if len(st.session_state.rows_to_delete) > 0:
+                    deletion_status.warning(f"Selected {len(st.session_state.rows_to_delete)} rows for deletion")
+                else:
+                    deletion_status.empty()  # Don't show any message when no rows are selected
+                
+                # Add delete button
+                if st.button("Delete Selected Rows", disabled=len(st.session_state.rows_to_delete) == 0, key="delete_button"):
+                    # Store the count of rows to be deleted for the success message
+                    num_rows_deleted = len(st.session_state.rows_to_delete)
+                    
+                    # Filter out the selected rows
+                    formatted_df = formatted_df.drop(index=list(st.session_state.rows_to_delete))
+                    
+                    # Update session state
+                    st.session_state.formatted_df = formatted_df
+                    
+                    # Clear selections
+                    st.session_state.rows_to_delete = set()
+                    
+                    # Show success message
+                    st.success(f"Deleted {num_rows_deleted} rows")
+                    
+                    # Clear the selection message
+                    deletion_status.empty()
+                
+                # Display the dataframe with checkboxes for selecting rows to delete
+                data_container = st.container()
+                with data_container:
+                    # Add a checkbox column to the DataFrame
+                    display_df = formatted_df.copy()
+                    display_df["_select_"] = False
+                    
+                    # Get list of original columns (excluding _select_)
+                    data_columns = formatted_df.columns.tolist()
+                    
+                    # Rearrange columns to put _select_ first
+                    select_cols = ["_select_"] + data_columns
+                    display_df = display_df[select_cols]
+                    
+                    # Use the Streamlit data editor with checkbox column
+                    edited_df = st.data_editor(
+                        display_df,
+                        column_config={
+                            "_select_": st.column_config.CheckboxColumn(
+                                "Select",
+                                help="Select rows to delete",
+                                default=False,
+                                width="small"  # Make the select column narrower
+                            ),
+                        },
+                        disabled=data_columns,  # Only disable data columns, not the checkbox column
+                        hide_index=True,
+                        use_container_width=True,
+                        key="data_editor"
+                    )
+                    
+                    # Update rows_to_delete based on checked boxes
+                    # Reset the selection set
+                    st.session_state.rows_to_delete = set()
+                    
+                    # Add the checked rows to the set
+                    if "_select_" in edited_df.columns:
+                        for idx, row in edited_df.iterrows():
+                            if row["_select_"]:
+                                st.session_state.rows_to_delete.add(idx)
+                    
+                    # Update the selection message dynamically
+                    if len(st.session_state.rows_to_delete) > 0:
+                        deletion_status.warning(f"Selected {len(st.session_state.rows_to_delete)} rows for deletion")
+                    else:
+                        deletion_status.empty()  # Don't show any message when no rows are selected
 
                 # Allow downloading the formatted data
                 csv = formatted_df.to_csv(index=False)
-                st.markdown("---")
+                
                 if st.session_state.db_mode:
                     col1, col2 = st.columns(2)
                     with col1:
