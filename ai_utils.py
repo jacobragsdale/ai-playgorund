@@ -96,8 +96,7 @@ def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_inf
             "```\n"
         )
         print(prompt)
-        print(f"Nuber of tokens: {get_prompt_tokens(prompt)}")
-        print("--------------------------------")
+        print(f"\nNumber of tokens: {get_prompt_tokens(prompt)}")
 
         # Call OpenAI to get the answer
         try:
@@ -114,6 +113,8 @@ def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_inf
             )
 
             response_content = response.choices[0].message.content.strip()
+            print(f"\nResponse: {response_content}")
+            print("\n--------------------------------\n")
             result = json.loads(response_content)
             
             if "target_sheet" not in result:
@@ -189,8 +190,7 @@ def identify_column(df: pd.DataFrame, target_column: TargetColumn, historical_ma
             f"{json.dumps(all_variations)}"
         )
         print(prompt)
-        print(f"Nuber of tokens: {get_prompt_tokens(prompt)}")
-        print("--------------------------------")
+        print(f"\nNumber of tokens: {get_prompt_tokens(prompt)}")
         try:
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -205,6 +205,8 @@ def identify_column(df: pd.DataFrame, target_column: TargetColumn, historical_ma
             )
 
             response_content = response.choices[0].message.content.strip()
+            print(f"\nResponse: {response_content}")
+            print("\n--------------------------------\n")
             guessed_column = json.loads(response_content).get(target_column.name)
 
             if not guessed_column:
