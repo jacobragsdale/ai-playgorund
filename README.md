@@ -5,6 +5,7 @@ A Streamlit application that processes Excel files and maps them to database tab
 ## Overview
 
 This application provides an intuitive interface for:
+
 - Uploading Excel files with tabular data
 - Automatically identifying the most relevant sheet in multi-sheet Excel files
 - Intelligently mapping Excel columns to database columns
@@ -64,11 +65,11 @@ The system uses AI (powered by OpenAI) to intelligently identify which sheet con
    ```
 
 2. In the web interface:
-   - Select a target database table
-   - Upload an Excel file
-   - Review the AI's automatic sheet and column mappings
-   - Adjust mappings if needed
-   - Save to database or download as CSV
+    - Select a target database table
+    - Upload an Excel file
+    - Review the AI's automatic sheet and column mappings
+    - Adjust mappings if needed
+    - Save to database or download as CSV
 
 ## Configuration
 
@@ -94,4 +95,4 @@ The system learns from previous mappings and stores them in `historical_column_v
 
 ## License
 
-[Your license information here] 
+[Your license information here]

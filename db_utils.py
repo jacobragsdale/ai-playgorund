@@ -1,6 +1,6 @@
-import os
 import json
-from typing import Tuple, List, Optional
+import os
+from typing import Tuple, List
 
 import pandas as pd
 import pyodbc
@@ -15,14 +15,14 @@ load_dotenv()
 
 class DatabaseUtils:
     """Class for handling database operations"""
-    
+
     def __init__(self, server=None, database=None, username=None, password=None):
         """Initialize database connection parameters"""
         self.server = server or os.getenv("DB_SERVER")
         self.database = database or os.getenv("DB_NAME")
         self.username = username or os.getenv("DB_USERNAME")
         self.password = password or os.getenv("DB_PASSWORD")
-        
+
     def get_connection(self):
         """Get a connection to the database"""
         try:
@@ -36,16 +36,16 @@ class DatabaseUtils:
         except Exception as e:
             st.error(f"Could not connect to database: {e}")
             return None
-    
+
     def save_to_database(self, df: pd.DataFrame, table_name: str, schema: str = "dbo") -> Tuple[bool, str]:
         """
         Save the DataFrame to the specified database table
-        
+
         Args:
             df: DataFrame to save
             table_name: Database table name
             schema: Database schema
-            
+
         Returns:
             Tuple of (success, message)
         """
@@ -61,7 +61,7 @@ class DatabaseUtils:
                         f"SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{table_name}' AND TABLE_SCHEMA = '{schema}' ORDER BY ORDINAL_POSITION")
                     db_columns = cursor.fetchall()
                     db_column_names = [col.COLUMN_NAME for col in db_columns]
-    
+
                     # Ensure DataFrame columns match database columns (case-insensitive)
                     df_cols = df.columns.tolist()
                     matched_cols = []
@@ -70,22 +70,22 @@ class DatabaseUtils:
                             if df_col.lower() == db_col.lower():
                                 matched_cols.append((df_col, db_col))
                                 break
-    
+
                     if not matched_cols:
                         return False, "No matching columns found between processed data and database table"
-    
+
                     # Clear existing data (optional - could be made configurable)
                     cursor.execute(f"DELETE FROM [{schema}].[{table_name}]")
-    
+
                     # Insert data
                     for _, row in df.iterrows():
                         # Generate placeholders and column names
                         columns = [db_col for _, db_col in matched_cols]
                         placeholders = ["?" for _ in matched_cols]
-    
+
                         # Get values in the correct order
                         values = [row[df_col] for df_col, _ in matched_cols]
-    
+
                         # Build and execute SQL
                         sql = f"INSERT INTO [{schema}].[{table_name}] ({', '.join(columns)}) VALUES ({', '.join(placeholders)})"
                         cursor.execute(sql, values)
@@ -115,7 +115,7 @@ class DatabaseUtils:
                 with connection.cursor() as cursor:
                     # Query to get column metadata
                     metadata_query = """
-                    SELECT 
+                    SELECT
                         c.COLUMN_NAME,
                         c.DATA_TYPE,
                         c.CHARACTER_MAXIMUM_LENGTH,
@@ -124,23 +124,23 @@ class DatabaseUtils:
                         c.IS_NULLABLE,
                         c.COLUMN_DEFAULT,
                         ep.value as COLUMN_DESCRIPTION
-                    FROM 
+                    FROM
                         INFORMATION_SCHEMA.COLUMNS c
-                    LEFT JOIN 
-                        sys.extended_properties ep ON 
+                    LEFT JOIN
+                        sys.extended_properties ep ON
                         ep.major_id = OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME) AND
                         ep.minor_id = c.ORDINAL_POSITION AND
                         ep.name = 'MS_Description'
-                    WHERE 
+                    WHERE
                         c.TABLE_NAME = ? AND
                         c.TABLE_SCHEMA = ?
-                    ORDER BY 
+                    ORDER BY
                         c.ORDINAL_POSITION
                     """
-    
+
                     cursor.execute(metadata_query, (table_name, schema))
                     column_info_list = []
-    
+
                     # Process column metadata
                     for row in cursor.fetchall():
                         # Format the full data type
@@ -149,7 +149,7 @@ class DatabaseUtils:
                             data_type = f"{data_type}({row.CHARACTER_MAXIMUM_LENGTH})"
                         elif row.NUMERIC_PRECISION is not None and row.NUMERIC_SCALE is not None:
                             data_type = f"{data_type}({row.NUMERIC_PRECISION},{row.NUMERIC_SCALE})"
-    
+
                         column_info = {
                             "name": row.COLUMN_NAME,
                             "data_type": data_type,
@@ -157,14 +157,14 @@ class DatabaseUtils:
                             "examples": []
                         }
                         column_info_list.append(column_info)
-    
+
                     # Get sample data if any columns were found
                     if column_info_list:
                         try:
                             # Get top 3 rows of data for examples
                             cursor.execute(f"SELECT TOP 3 * FROM [{schema}].[{table_name}]")
                             rows = cursor.fetchall()
-    
+
                             if rows:
                                 # Add sample values to each column
                                 for i, column_info in enumerate(column_info_list):
@@ -172,7 +172,7 @@ class DatabaseUtils:
                                     column_info["examples"] = [s for s in samples if s != "NULL"]
                         except Exception as e:
                             print(f"Warning: Could not retrieve sample data: {e}")
-    
+
                     # Load historical column variations from JSON file
                     historical_variations = {}
                     table_identifier = f"{schema}.{table_name}"
@@ -183,13 +183,13 @@ class DatabaseUtils:
                                 historical_variations = all_variations[table_identifier]
                     except Exception as e:
                         print(f"Warning: Could not load historical column variations: {e}")
-    
+
                     # Create TargetColumn objects
                     target_columns: List[TargetColumn] = []
                     for info in column_info_list:
                         column_name = info["name"].lower()
                         column_variations = historical_variations.get(column_name, [])
-                        
+
                         target_columns.append(TargetColumn(
                             name=column_name,
                             data_type=info["data_type"],
@@ -197,7 +197,7 @@ class DatabaseUtils:
                             examples=info["examples"],
                             historical_variations=column_variations
                         ))
-    
+
                     print(f"Generated {len(target_columns)} column definitions for {schema}.{table_name}")
                     return target_columns
 

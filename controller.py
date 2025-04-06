@@ -35,14 +35,14 @@ def load_historical_variations():
     try:
         # Get the current table identifier
         current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
-        
+
         # Load historical column variations from the single JSON file
         with open("historical_column_variations.json", "r") as f:
             all_variations = json.load(f)
-            
+
             # Get variations specific to the current table
             table_variations = all_variations.get(current_table, {})
-            
+
             # Update the target column objects with the historical variations
             for col_name, col_variations in table_variations.items():
                 if col_name in st.session_state.TARGET_COLUMN_DICT:
@@ -54,11 +54,11 @@ def load_historical_variations():
             # Create the file with an empty structure for the current table
             current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
             all_variations = {current_table: {}}
-            
+
             # Initialize with empty lists for each column
             for col_name in st.session_state.TARGET_COLUMN_DICT:
                 all_variations[current_table][col_name] = []
-                
+
             # Save the initial structure
             with open("historical_column_variations.json", "w") as f:
                 json.dump(all_variations, f, indent=2)
@@ -69,11 +69,11 @@ def load_historical_variations():
 def select_database_table(schema: str, table: str) -> bool:
     """
     Select a database table and load its column definitions
-    
+
     Args:
         schema: Schema name
         table: Table name
-        
+
     Returns:
         Success status
     """
@@ -103,10 +103,10 @@ def select_database_table(schema: str, table: str) -> bool:
 def process_excel_file(uploaded_file) -> Dict[str, Any]:
     """
     Process an Excel file and return structured data about it
-    
+
     Args:
         uploaded_file: Uploaded Excel file
-        
+
     Returns:
         Dict with file info, sheets, dataframes, etc.
     """
@@ -143,10 +143,10 @@ def process_excel_file(uploaded_file) -> Dict[str, Any]:
 def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Identify the target sheet and columns in the Excel file
-    
+
     Args:
         excel_data: Dict with Excel file data
-        
+
     Returns:
         Dict with identification results
     """
@@ -196,7 +196,7 @@ def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
         # Load historical mappings for the current table
         current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
         historical_mappings = {}
-        
+
         try:
             with open("historical_column_variations.json", "r") as f:
                 all_mappings = json.load(f)
@@ -211,8 +211,8 @@ def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
 
         # Use the new utility function to identify columns with threads
         column_mappings = identify_columns_with_threads(
-            df, 
-            st.session_state.TARGET_COLUMNS, 
+            df,
+            st.session_state.TARGET_COLUMNS,
             historical_mappings,
             update_historical=True
         )
@@ -225,10 +225,10 @@ def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
                     all_mappings = json.load(f)
             except Exception:
                 all_mappings = {}
-            
+
             # Update the mappings for the current table
             all_mappings[current_table] = historical_mappings
-            
+
             # Save back to file
             with open("historical_column_variations.json", "w") as f:
                 json.dump(all_mappings, f, indent=2)
@@ -247,21 +247,21 @@ def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
 def apply_column_mappings(df: pd.DataFrame, mappings: Dict[str, str]) -> pd.DataFrame:
     """
     Apply column mappings to a dataframe
-    
+
     Args:
         df: Input dataframe
         mappings: Dictionary of target_col -> excel_col
-        
+
     Returns:
         DataFrame with target column names and data from mapped Excel columns
     """
     # Create a new empty dataframe with target column names
     result_df = pd.DataFrame()
-    
+
     # For each target column, get data from the mapped Excel column
     for target_col, excel_col in mappings.items():
         if excel_col in df.columns:
             # Add the data from the Excel column to the result dataframe with the target column name
             result_df[target_col] = df[excel_col]
-    
+
     return result_df

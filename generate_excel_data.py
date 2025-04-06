@@ -2,12 +2,11 @@ import concurrent.futures
 import json
 import os.path
 import random
+import string
 from typing import List
-from dotenv import load_dotenv
 
 import pandas as pd
-import string
-
+from dotenv import load_dotenv
 from openai import OpenAI
 
 load_dotenv()
@@ -212,20 +211,20 @@ def main():
                 all_variations = json.load(f)
         except Exception:
             all_variations = {}
-        
+
         # Define a default table for demo purposes
         table_name = "dbo.Accounts"
         if table_name not in all_variations:
             all_variations[table_name] = {}
-        
+
         # Update with new variations
         for col, variations in generated_column_variations.items():
             all_variations[table_name][col] = variations
-            
+
         # Save back to file
         with open('historical_column_variations.json', 'w') as f:
             json.dump(all_variations, f, indent=2)
-            
+
         print("Successfully saved column variations")
     except Exception as e:
         print(f"Error saving column variations: {e}")

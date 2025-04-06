@@ -1,11 +1,12 @@
 import json
-from typing import Dict, Optional, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, Optional, List
 
 import pandas as pd
 import streamlit as st
-from openai import OpenAI
 import tiktoken
+from openai import OpenAI
+
 from models import TargetColumn
 
 # Initialize OpenAI client
@@ -28,12 +29,12 @@ def get_prompt_tokens(prompt: str) -> int:
 def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_info: str = "") -> Optional[str]:
     """
     Use OpenAI to identify which sheet in an Excel file contains the target data
-    
+
     Args:
         xl_file: Excel file object
         target_columns: List of target column objects to look for
         table_info: Optional string with table information
-        
+
     Returns:
         Tuple of (target_sheet, confidence, reasoning) or (None, 0, error_message)
         Note: reasoning parameter is kept for backward compatibility but will contain an empty string
@@ -45,7 +46,7 @@ def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_inf
     except Exception as e:
         st.error(f"Error reading Excel file: {e}")
         return None
-    
+
     with st.spinner("Identifying target sheet..."):
         # For each sheet, get a sample of data to analyze
         sheet_data = {}
@@ -59,21 +60,21 @@ def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_inf
                 }
             except Exception as e:
                 st.warning(f"Error reading sheet {sheet_name}: {e}")
-        
+
         # Create prompt for OpenAI using the column metadata
         prompt = (
             "You are tasked with identifying which sheet in an Excel file contains specific data.\n\n"
             "Here are the sheets in the file and their column names and sample data:\n\n"
         )
-        
+
         for sheet_name, data in sheet_data.items():
             prompt += f"Sheet name: {sheet_name}\n"
             prompt += f"Columns: {json.dumps(data['columns'])}\n"
             prompt += f"Sample data: {json.dumps(data['sample'], indent=2)}\n\n"
-        
+
         # Add detailed information about the target columns
         prompt += f"The target sheet should contain columns{table_info}. Here are the specific types of columns we're looking for:\n\n"
-        
+
         for column in target_columns:
             prompt += f"- {column.name} ({column.data_type}): {column.description}\n"
             if column.examples:
@@ -81,7 +82,7 @@ def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_inf
             if column.historical_variations:
                 prompt += f"  Known column name variations: {', '.join(column.historical_variations)}\n"
             prompt += "\n"
-        
+
         prompt += (
             "INSTRUCTIONS:\n"
             "- Analyze each sheet's column names and data patterns\n"
@@ -105,7 +106,7 @@ def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_inf
                 model="gpt-4o-mini",
                 messages=[
                     {
-                        "role": "system", 
+                        "role": "system",
                         "content": "You are a data analysis assistant that specializes in identifying data structures. Always respond with ONLY the requested JSON format."
                     },
                     {"role": "user", "content": prompt}
@@ -117,17 +118,17 @@ def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_inf
             print(f"\nResponse: {response_content}")
             print("\n--------------------------------\n")
             result = json.loads(response_content)
-            
+
             if "target_sheet" not in result:
                 st.error(f"No valid 'target_sheet' found in the response. Response: {response_content}")
                 return None
-            
+
             target_sheet = result["target_sheet"]
-            
+
             if target_sheet not in sheet_names:
                 st.error(f"Identified sheet '{target_sheet}' not found in the Excel file.")
                 return None
-            
+
             # Return empty string for reasoning to maintain compatibility
             return target_sheet
         except Exception as e:
@@ -138,21 +139,21 @@ def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_inf
 def identify_column(df: pd.DataFrame, target_column: TargetColumn, historical_mappings: Optional[Dict[str, List[str]]] = None) -> Optional[str]:
     """
     Use OpenAI to identify which column in the dataframe corresponds to the given target column
-    
+
     Args:
         df: DataFrame to analyze
         target_column: TargetColumn object containing metadata
         historical_mappings: Optional dictionary of historical mappings
-        
+
     Returns:
         Column name if found, None otherwise
     """
     with st.spinner(f"Identifying column for {target_column.name}..."):
         sample_data = df.head(3).to_dict(orient="records")
-        
+
         # Get list of available columns
         available_columns = list(df.columns)
-        
+
         # Combine historical variations from both sources
         all_variations = target_column.historical_variations.copy()
         if historical_mappings and target_column.name in historical_mappings:
@@ -221,43 +222,39 @@ def identify_column(df: pd.DataFrame, target_column: TargetColumn, historical_ma
             return guessed_column
         except Exception as e:
             st.error(f"Error identifying column {target_column.name}: {e}")
-            return None 
+            return None
 
 
-def identify_columns_with_threads(
-    df: pd.DataFrame, 
-    target_columns: List[TargetColumn], 
-    historical_mappings: Optional[Dict[str, List[str]]] = None,
-    update_historical: bool = True
-) -> Dict[str, str]:
+def identify_columns_with_threads(df: pd.DataFrame, target_columns: List[TargetColumn], historical_mappings: Optional[Dict[str, List[str]]] = None, update_historical: bool = True) -> Dict[str, str]:
     """
     Use threads to identify columns in parallel for multiple target columns
-    
+
     Args:
         df: DataFrame to analyze
         target_columns: List of TargetColumn objects to identify
         historical_mappings: Optional dictionary of historical mappings
         update_historical: Whether to update historical mappings with new matches
-        
+
     Returns:
         Dictionary mapping target column names to identified dataframe columns
     """
+
     # Function to process a single column in a thread
     def identify_column_thread(column):
         guessed_column = identify_column(df, column, historical_mappings)
         return column.name, guessed_column
-    
+
     # Initialize the column mappings dictionary
     column_mappings = {}
-    
+
     # Use ThreadPoolExecutor to parallelize column identification
     with ThreadPoolExecutor() as executor:
         # Submit all column identification tasks
         future_to_column = {
-            executor.submit(identify_column_thread, column): column 
+            executor.submit(identify_column_thread, column): column
             for column in target_columns
         }
-        
+
         # Process results as they complete
         for future in as_completed(future_to_column):
             try:
@@ -266,11 +263,11 @@ def identify_columns_with_threads(
                     column_mappings[column_name] = guessed_column
             except Exception as exc:
                 st.warning(f"Column identification thread generated an exception: {exc}")
-    
+
     # Update historical mappings if requested
     if update_historical and historical_mappings:
         for column_name, guessed_column in column_mappings.items():
             if guessed_column not in historical_mappings[column_name]:
                 historical_mappings[column_name].append(guessed_column)
-    
-    return column_mappings 
+
+    return column_mappings
