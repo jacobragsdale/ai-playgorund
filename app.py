@@ -88,6 +88,39 @@ def show_column_definitions():
                 st.write("---")
 
 
+# Function to update formatted dataframe when mapping changes
+def update_formatted_df(df, user_column_mappings):
+    """Update the formatted dataframe based on user mappings"""
+    if not user_column_mappings:
+        return None
+        
+    # Apply the mappings to get formatted dataframe
+    formatted_df = apply_column_mappings(df, user_column_mappings)
+    
+    # Store the result in session state
+    st.session_state.formatted_df = formatted_df
+    st.session_state.user_column_mappings = user_column_mappings
+    
+    return formatted_df
+
+
+def on_mapping_change():
+    """Callback when column mappings change"""
+    # Update the column mappings dictionary
+    user_column_mappings = {}
+    for column in st.session_state.TARGET_COLUMNS:
+        key = f"col_map_{column.name}"
+        if key in st.session_state and st.session_state[key] != "None":
+            user_column_mappings[column.name] = st.session_state[key]
+    
+    # Get the selected sheet's dataframe from session state
+    if "selected_sheet_df" in st.session_state and st.session_state.selected_sheet_df is not None:
+        df = st.session_state.selected_sheet_df
+        
+        # Update the formatted dataframe
+        update_formatted_df(df, user_column_mappings)
+
+
 def show_file_upload():
     """Display file upload interface and process uploaded file"""
     # File uploader
@@ -97,21 +130,25 @@ def show_file_upload():
         # Store the file in session state for later use
         st.session_state._uploaded_file = uploaded_file
 
-        # Show file details
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write("**File Details:**")
-            file_details = {"Filename": uploaded_file.name, "File size": f"{uploaded_file.size / 1024:.2f} KB"}
-            for key, value in file_details.items():
-                st.write(f"**{key}:** {value}")
-
         st.markdown("---")
 
-        # Process the Excel file
-        excel_data = process_excel_file(uploaded_file)
-        if not excel_data["success"]:
-            st.error(f"Error processing file: {excel_data['error']}")
-            return
+        # Check if we need to reprocess or if we have cached results
+        file_changed = "excel_data" not in st.session_state or "prev_file_name" not in st.session_state or st.session_state.prev_file_name != uploaded_file.name
+        
+        # Process the Excel file if it's new
+        if file_changed:
+            with st.spinner("Processing Excel file..."):
+                excel_data = process_excel_file(uploaded_file)
+                if not excel_data["success"]:
+                    st.error(f"Error processing file: {excel_data['error']}")
+                    return
+                
+                # Store in session state for reuse
+                st.session_state.excel_data = excel_data
+                st.session_state.prev_file_name = uploaded_file.name
+        else:
+            # Use cached data
+            excel_data = st.session_state.excel_data
 
         # Display the sheets in tabs
         st.subheader("All Excel Sheets")
@@ -131,134 +168,204 @@ def show_file_upload():
 
         st.markdown("---")
 
-        # Process the data automatically
+        # Process the data automatically - only if we don't already have results
         with st.container():
             st.subheader("Sheet Identification and Column Mapping")
+            
+            # Check if we need to run the AI analysis
+            if "analysis_results" not in st.session_state or file_changed:
+                with st.spinner("Analyzing Excel file..."):
+                    # Identify the target sheet and columns
+                    results = identify_sheet_and_columns(excel_data)
+                    
+                    # Store results in session state
+                    st.session_state.analysis_results = results
+                    
+                    # Automatically apply AI-suggested mappings on initial load
+                    if results["success"]:
+                        target_sheet = results["target_sheet"]
+                        df = excel_data["dataframes"][target_sheet]
+                        st.session_state.selected_sheet_df = df
+                        
+                        # Use AI mappings as initial mappings
+                        ai_mappings = results["column_mappings"]
+                        
+                        # Update formatted dataframe with AI mappings
+                        if ai_mappings:
+                            formatted_df = apply_column_mappings(df, ai_mappings)
+                            st.session_state.formatted_df = formatted_df
+                            st.session_state.user_column_mappings = ai_mappings
+            else:
+                # Use cached results
+                results = st.session_state.analysis_results
 
-            with st.spinner("Analyzing Excel file..."):
-                # Identify the target sheet and columns
-                results = identify_sheet_and_columns(excel_data)
+            if not results["success"]:
+                st.error(f"Analysis failed: {results.get('error', 'Unknown error')}")
+                return
 
-                if not results["success"]:
-                    st.error(f"Analysis failed: {results.get('error', 'Unknown error')}")
-                    return
+            # Show sheet identification results
+            target_sheet = results["target_sheet"]
 
-                # Show sheet identification results
-                target_sheet = results["target_sheet"]
-                confidence = results["confidence"]
+            st.success(f"Identified target sheet: **{target_sheet}**")
 
-                st.success(f"Identified target sheet: **{target_sheet}** with confidence {confidence:.2f}")
+            # Allow user to override the selected sheet
+            st.write("**Override Target Sheet Selection:**")
+            
+            # Define callback for sheet selection change
+            def on_sheet_change():
+                sheet_name = st.session_state.sheet_selector
+                st.session_state.selected_sheet_df = excel_data["dataframes"][sheet_name]
+                # Reset column mappings when sheet changes
+                st.session_state.user_column_mappings = {}
+                st.session_state.formatted_df = None
+            
+            selected_sheet = st.selectbox(
+                "Select the sheet containing target data:",
+                options=excel_data["sheets"],
+                index=excel_data["sheets"].index(target_sheet),
+                key="sheet_selector",
+                on_change=on_sheet_change
+            )
 
-                # Allow user to override the selected sheet
-                st.write("**Override Target Sheet Selection:**")
-                selected_sheet = st.selectbox(
-                    "Select the sheet containing data:",
-                    options=excel_data["sheets"],
-                    index=excel_data["sheets"].index(target_sheet),
-                    key="sheet_selector"
-                )
+            # Get the dataframe for the selected sheet
+            df = excel_data["dataframes"][selected_sheet]
+            st.session_state.selected_sheet_df = df
 
-                # Get the dataframe for the selected sheet
-                df = excel_data["dataframes"][selected_sheet]
+            # Show column mapping section
+            st.subheader("Column Mapping")
 
-                # Show column mapping section
-                st.subheader("Column Mapping")
+            # Display the AI mappings
+            ai_mappings = results["column_mappings"]
 
-                # Display the AI mappings
-                ai_mappings = results["column_mappings"]
-
-                # Allow user to override column mappings
+            # Create a form for column mappings to batch the updates
+            with st.form(key="column_mapping_form"):
                 st.write("**Override Column Mappings:**")
-                st.write("Select the appropriate column from your data for each target column:")
+                st.write("If any of the column mappings are incorrect, update them here.")
 
                 # Add "None" option for columns that don't exist in the dataset
                 df_columns_with_none = ["None"] + list(df.columns)
-
+                
                 # Create user-editable column mappings
                 user_column_mappings = {}
                 cols = st.columns(3)
                 for i, column in enumerate(st.session_state.TARGET_COLUMNS):
                     col_idx = i % 3
                     with cols[col_idx]:
+                        # Create a version of the dropdown options with stars for AI-suggested mappings
+                        marked_columns = df_columns_with_none.copy()
+                        
                         # Set default to the AI suggestion if available
                         default_idx = 0
+                        ai_suggestion = None
+                        
                         if column.name in ai_mappings:
                             try:
-                                default_idx = df_columns_with_none.index(ai_mappings[column.name])
+                                ai_suggestion = ai_mappings[column.name]
+                                default_idx = df_columns_with_none.index(ai_suggestion)
+                                
+                                # Mark the AI suggestion with a star in the dropdown
+                                for j, col_name in enumerate(marked_columns):
+                                    if col_name == ai_suggestion:
+                                        marked_columns[j] = f"* {col_name} (AI suggestion)"
                             except ValueError:
                                 default_idx = 0
 
+                        # Get current value from session state if available
+                        current_value = None
+                        key = f"col_map_{column.name}"
+                        if key in st.session_state:
+                            try:
+                                # Find the index in original list (without stars)
+                                orig_value = st.session_state[key].replace("* ", "").split(" (AI suggestion)")[0]
+                                current_idx = df_columns_with_none.index(orig_value)
+                                default_idx = current_idx
+                            except (ValueError, IndexError):
+                                pass
+
+                        # Display the dropdown with marked options
                         selected_col = st.selectbox(
                             f"{column.name} ({column.data_type}):",
-                            options=df_columns_with_none,
+                            options=marked_columns,
                             index=default_idx,
                             help=column.description,
-                            key=f"col_map_{column.name}"
+                            key=key
                         )
-
+                        
+                        # Convert selected value back to original column name
                         if selected_col != "None":
-                            user_column_mappings[column.name] = selected_col
-
-                # Apply the user-selected mappings
-                if user_column_mappings:
-                    formatted_df = apply_column_mappings(df, user_column_mappings)
-
-                    # Store the formatted DataFrame in session state
+                            # Extract the original column name without the star/AI suggestion text
+                            orig_col = selected_col.replace("* ", "").split(" (AI suggestion)")[0]
+                            user_column_mappings[column.name] = orig_col
+                
+                # Submit button for the form
+                submit_button = st.form_submit_button("Override Mappings")
+                
+                if submit_button:
+                    # Update formatted_df in session state
+                    st.session_state.user_column_mappings = user_column_mappings
+                    formatted_df = update_formatted_df(df, user_column_mappings)
                     st.session_state.formatted_df = formatted_df
 
-                    # Show formatted data
-                    st.subheader("Formatted Data")
-                    st.dataframe(formatted_df, use_container_width=True)
+            # Display the formatted data outside the form to avoid rerunning when it's submitted
+            if "formatted_df" in st.session_state and st.session_state.formatted_df is not None:
+                formatted_df = st.session_state.formatted_df
+                user_column_mappings = st.session_state.user_column_mappings
+                
+                # Show formatted data
+                st.subheader("Formatted Data")
+                st.dataframe(formatted_df, use_container_width=True)
 
-                    # Show column mapping summary
-                    with st.expander("View Column Mapping Summary"):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.write("**Original Column Names**")
-                            for target_col, orig_col in user_column_mappings.items():
-                                st.write(f"- {orig_col} → {target_col}")
-                        with col2:
-                            st.write("**Standardized Column Names**")
-                            for col in formatted_df.columns:
-                                st.write(f"- {col}")
+                # Show column mapping summary
+                with st.expander("View Column Mapping Summary"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write("**Original Column Names**")
+                        for target_col, orig_col in user_column_mappings.items():
+                            st.write(f"- {orig_col} → {target_col}")
+                    with col2:
+                        st.write("**Standardized Column Names**")
+                        for col in formatted_df.columns:
+                            st.write(f"- {col}")
 
-                    # Allow downloading the processed data
-                    csv = formatted_df.to_csv(index=False)
+                # Allow downloading the processed data
+                csv = formatted_df.to_csv(index=False)
 
-                    if st.session_state.db_mode:
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.download_button(
-                                label="Download processed data as CSV",
-                                data=csv,
-                                file_name=f"processed_{uploaded_file.name.split('.')[0]}.csv",
-                                mime="text/csv",
-                            )
-
-                        # Add button to save to database
-                        with col2:
-                            if st.button("Save to Database", type="primary"):
-                                success, message = save_to_database(
-                                    formatted_df,
-                                    st.session_state.selected_table,
-                                    st.session_state.selected_table_schema
-                                )
-
-                                if success:
-                                    st.success(message)
-                                else:
-                                    st.error(message)
-                    else:
-                        # Just download button in standalone mode
+                if st.session_state.db_mode:
+                    col1, col2 = st.columns(2)
+                    with col1:
                         st.download_button(
                             label="Download processed data as CSV",
                             data=csv,
                             file_name=f"processed_{uploaded_file.name.split('.')[0]}.csv",
                             mime="text/csv",
-                            type="primary"
                         )
+
+                    # Add button to save to database
+                    with col2:
+                        if st.button(f"Save to {st.session_state.selected_table_schema}.{st.session_state.selected_table}", type="primary"):
+                            success, message = save_to_database(
+                                formatted_df,
+                                st.session_state.selected_table,
+                                st.session_state.selected_table_schema
+                            )
+
+                            if success:
+                                st.success(message)
+                            else:
+                                st.error(message)
                 else:
-                    st.warning("No column mappings selected. Please select at least one column mapping.")
+                    # Just download button in standalone mode
+                    st.download_button(
+                        label="Download processed data as CSV",
+                        data=csv,
+                        file_name=f"processed_{uploaded_file.name.split('.')[0]}.csv",
+                        mime="text/csv",
+                        type="primary"
+                    )
+            elif user_column_mappings:
+                st.info("Click 'Override Mappings' to update the formatted data")
+            else:
+                st.warning("No column mappings selected. Please select at least one column mapping.")
 
 
 def main():
