@@ -2,23 +2,33 @@
   "dbo.Accounts": {
     "account_id": [
       "account-no.",
-      "account identification"
+      "account identification",
+      "acct_id",
+      "account number"
     ],
     "balance": [
       "balance_amount",
-      "current-balance"
+      "current-balance",
+      "account balance info",
+      "account balance"
     ],
     "open_date": [
       "opening-date",
-      "opening date / initiation date"
+      "opening date / initiation date",
+      "date of opening - open_date",
+      "open date - start date"
     ],
     "status": [
       "status_type",
-      "current-status"
+      "current-status",
+      "order status",
+      "Status - current"
     ],
     "customer_name": [
       "client_name",
-      "client-name-identifier"
+      "client-name-identifier",
+      "customer's name",
+      "customer-name"
     ]
   }
 }

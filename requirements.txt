@@ -1,0 +1,6 @@
+pandas
+pyodbc
+streamlit
+openai
+python-dotenv
+tiktoken

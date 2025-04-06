@@ -4,11 +4,24 @@ from typing import Dict, Optional, List
 import pandas as pd
 import streamlit as st
 from openai import OpenAI
-
+import tiktoken
 from models import TargetColumn
 
 # Initialize OpenAI client
 client = OpenAI()
+
+
+def get_prompt_tokens(prompt: str) -> int:
+    """Gets the number of tokens that a prompt is (128k is max context window)"""
+    model_name = "gpt-4o-mini"
+    try:
+        encoding = tiktoken.encoding_for_model(model_name)
+    except KeyError:
+        print(f"Warning: Model {model_name} not found. Using cl100k_base encoding.")
+        encoding = tiktoken.get_encoding("cl100k_base")
+
+    num_tokens = len(encoding.encode(prompt))
+    return num_tokens
 
 
 def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_info: str = "") -> Optional[str]:
@@ -82,6 +95,9 @@ def identify_target_sheet(xl_file, target_columns: List[TargetColumn], table_inf
             "}\n"
             "```\n"
         )
+        print(prompt)
+        print(f"Nuber of tokens: {get_prompt_tokens(prompt)}")
+        print("--------------------------------")
 
         # Call OpenAI to get the answer
         try:
@@ -172,7 +188,9 @@ def identify_column(df: pd.DataFrame, target_column: TargetColumn, historical_ma
             "Historical column names for this type:\n"
             f"{json.dumps(all_variations)}"
         )
-
+        print(prompt)
+        print(f"Nuber of tokens: {get_prompt_tokens(prompt)}")
+        print("--------------------------------")
         try:
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
