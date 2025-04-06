@@ -232,6 +232,7 @@ def show_file_upload():
             st.session_state.selected_sheet_df = df
 
             # Show column mapping section
+            st.markdown("---")
             st.subheader("Column Mapping")
 
             # Display the AI mappings
@@ -266,7 +267,7 @@ def show_file_upload():
                                 # Mark the AI suggestion with a star in the dropdown
                                 for j, col_name in enumerate(marked_columns):
                                     if col_name == ai_suggestion:
-                                        marked_columns[j] = f"* {col_name} (AI suggestion)"
+                                        marked_columns[j] = f"{col_name} (AI suggestion)"
                             except ValueError:
                                 default_idx = 0
 
@@ -309,34 +310,22 @@ def show_file_upload():
             # Display the formatted data outside the form to avoid rerunning when it's submitted
             if "formatted_df" in st.session_state and st.session_state.formatted_df is not None:
                 formatted_df = st.session_state.formatted_df
-                user_column_mappings = st.session_state.user_column_mappings
                 
                 # Show formatted data
+                st.markdown("---")
                 st.subheader("Formatted Data")
                 st.dataframe(formatted_df, use_container_width=True)
 
-                # Show column mapping summary
-                with st.expander("View Column Mapping Summary"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.write("**Original Column Names**")
-                        for target_col, orig_col in user_column_mappings.items():
-                            st.write(f"- {orig_col} → {target_col}")
-                    with col2:
-                        st.write("**Standardized Column Names**")
-                        for col in formatted_df.columns:
-                            st.write(f"- {col}")
-
-                # Allow downloading the processed data
+                # Allow downloading the formatted data
                 csv = formatted_df.to_csv(index=False)
-
+                st.markdown("---")
                 if st.session_state.db_mode:
                     col1, col2 = st.columns(2)
                     with col1:
                         st.download_button(
-                            label="Download processed data as CSV",
+                            label="Download formatted data as CSV",
                             data=csv,
-                            file_name=f"processed_{uploaded_file.name.split('.')[0]}.csv",
+                            file_name=f"formatted_{uploaded_file.name.split('.')[0]}.csv",
                             mime="text/csv",
                         )
 
@@ -356,9 +345,9 @@ def show_file_upload():
                 else:
                     # Just download button in standalone mode
                     st.download_button(
-                        label="Download processed data as CSV",
+                        label="Download formatted data as CSV",
                         data=csv,
-                        file_name=f"processed_{uploaded_file.name.split('.')[0]}.csv",
+                        file_name=f"formatted_{uploaded_file.name.split('.')[0]}.csv",
                         mime="text/csv",
                         type="primary"
                     )
