@@ -1,7 +1,7 @@
 import os
 import pyodbc
 from dotenv import load_dotenv
-from process_excel_data import TargetColumn
+from main import TargetColumn
 
 load_dotenv()
 

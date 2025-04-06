@@ -40,7 +40,8 @@
     "status_type",
     "order_status_label",
     "order status",
-    "Status - current"
+    "Status - current",
+    "in_stock"
   ],
   "email": [
     "email-addr",
@@ -80,7 +81,8 @@
     "client_name",
     "customer - name",
     "client-name-identifier",
-    "customer's name"
+    "customer's name",
+    "sales_rep"
   ],
   "last_activity": [
     "latest_activity",

@@ -220,7 +220,7 @@ def identify_column(df, target_column, historical_mappings=None):
         target_column: TargetColumn object containing metadata
         historical_mappings: Optional dictionary of historical mappings
     """
-    sample_data = df.head(3).to_dict(orient="records")
+    sample_data = df.head(2).to_dict(orient="records")
     
     # Combine historical variations from both sources
     all_variations = target_column.historical_variations.copy()
