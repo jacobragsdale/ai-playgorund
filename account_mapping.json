@@ -4,62 +4,93 @@
     "account-identifier",
     "account-number",
     "account id",
-    "account_no."
+    "account_no.",
+    "account identification",
+    "account-no.",
+    "acct_id",
+    "account number"
   ],
   "balance": [
     "funds_available",
     "total-balance",
     "account balance",
     "balance_amount",
-    "balance - total"
+    "balance - total",
+    "current-balance",
+    "account balance info"
   ],
   "open_date": [
     "date-opened",
     "open - date_!",
     "opening_date",
     "open - date",
-    "date of opening"
+    "date of opening",
+    "opening date / initiation date",
+    "opening-date",
+    "opened_on_date",
+    "date of opening - open_date",
+    "open date - start date"
   ],
   "status": [
     "status level",
     "status.state",
     "status-info",
     "status - update",
-    "current-status"
+    "current-status",
+    "status_type",
+    "order_status_label",
+    "order status",
+    "Status - current"
   ],
   "email": [
     "email-addr",
     "mail_address",
     "email_address",
     "e-mail contact",
-    "contact-email"
+    "contact-email",
+    "contact email",
+    "email-address"
   ],
   "phone": [
     "telephone#number",
     "mobile-phone",
     "phone-number",
     "contact_number",
-    "phone number"
+    "phone number",
+    "mobile_phone",
+    "contact-number",
+    "cell-phone",
+    "telephone_no"
   ],
   "address": [
     "home_address",
     "mailing address",
     "address-line",
     "location_address",
-    "street_address"
+    "street_address",
+    "street address",
+    "location-address",
+    "location - details",
+    "address-info"
   ],
   "customer_name": [
     "customer's Name",
     "cust_name",
     "customer-name",
     "client_name",
-    "customer - name"
+    "customer - name",
+    "client-name-identifier",
+    "customer's name"
   ],
   "last_activity": [
     "latest_activity",
     "recent-activity-info",
     "last activity date",
     "most_recent_activity",
-    "last - activity_time"
+    "last - activity_time",
+    "last-activity",
+    "latest_activity_event",
+    "most recent activity date",
+    "last activity time"
   ]
 }
