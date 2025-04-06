@@ -205,8 +205,30 @@ def main():
         print(f"Successfully saved {filename}")
 
     # Save column variations for reference
-    with open('column_variations.json', 'w') as f:
-        json.dump(generated_column_variations, f, indent=2)
+    try:
+        # Load existing historical column variations
+        try:
+            with open('historical_column_variations.json', 'r') as f:
+                all_variations = json.load(f)
+        except Exception:
+            all_variations = {}
+        
+        # Define a default table for demo purposes
+        table_name = "dbo.Accounts"
+        if table_name not in all_variations:
+            all_variations[table_name] = {}
+        
+        # Update with new variations
+        for col, variations in generated_column_variations.items():
+            all_variations[table_name][col] = variations
+            
+        # Save back to file
+        with open('historical_column_variations.json', 'w') as f:
+            json.dump(all_variations, f, indent=2)
+            
+        print("Successfully saved column variations")
+    except Exception as e:
+        print(f"Error saving column variations: {e}")
 
 
 if __name__ == '__main__':

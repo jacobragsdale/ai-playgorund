@@ -5,15 +5,12 @@ import pandas as pd
 import streamlit as st
 
 from ai_utils import identify_target_sheet, identify_column
-from db_utils import load_table_columns
+from db_utils import DatabaseUtils
 from models import DEFAULT_TARGET_COLUMNS
 
 
 def initialize_session_state():
     """Initialize session state variables"""
-    # Always assume DB is available
-    db_available = True
-
     if 'table_selected' not in st.session_state:
         st.session_state.table_selected = False
     if 'selected_table' not in st.session_state:
@@ -28,42 +25,45 @@ def initialize_session_state():
         st.session_state.TARGET_COLUMN_NAMES = [col.name for col in DEFAULT_TARGET_COLUMNS]
     if 'formatted_df' not in st.session_state:
         st.session_state.formatted_df = None
-    if 'db_mode' not in st.session_state:
-        st.session_state.db_mode = db_available
 
 
 def load_historical_variations():
     """Load historical column name variations and update the target column objects"""
-    if not hasattr(st.session_state, 'TARGET_COLUMN_DICT'):
+    if not hasattr(st.session_state, 'TARGET_COLUMN_DICT') or not st.session_state.selected_table:
         return
 
     try:
-        # Try to load historical column variations from column_variations.json
-        with open("column_variations.json", "r") as f:
-            variations = json.load(f)
-
+        # Get the current table identifier
+        current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
+        
+        # Load historical column variations from the single JSON file
+        with open("historical_column_variations.json", "r") as f:
+            all_variations = json.load(f)
+            
+            # Get variations specific to the current table
+            table_variations = all_variations.get(current_table, {})
+            
             # Update the target column objects with the historical variations
-            for col_name, col_variations in variations.items():
+            for col_name, col_variations in table_variations.items():
                 if col_name in st.session_state.TARGET_COLUMN_DICT:
                     st.session_state.TARGET_COLUMN_DICT[col_name].historical_variations = col_variations
     except Exception as e:
-        st.warning(f"Could not load column variations: {e}")
-
-    try:
-        # Also try to load from account_mapping.json if it exists
-        with open("account_mapping.json", "r") as f:
-            mappings = json.load(f)
-
-            # Update with any additional variations from account mappings
-            for col_name, col_variations in mappings.items():
-                if col_name in st.session_state.TARGET_COLUMN_DICT:
-                    current_variations = set(st.session_state.TARGET_COLUMN_DICT[col_name].historical_variations)
-                    # Add any new variations not already in the list
-                    for var in col_variations:
-                        if var not in current_variations:
-                            st.session_state.TARGET_COLUMN_DICT[col_name].historical_variations.append(var)
-    except Exception as e:
-        st.warning(f"Could not load account mappings: {e}")
+        st.warning(f"Could not load historical column variations: {e}")
+        # Create a default empty mapping if the file doesn't exist
+        try:
+            # Create the file with an empty structure for the current table
+            current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
+            all_variations = {current_table: {}}
+            
+            # Initialize with empty lists for each column
+            for col_name in st.session_state.TARGET_COLUMN_DICT:
+                all_variations[current_table][col_name] = []
+                
+            # Save the initial structure
+            with open("historical_column_variations.json", "w") as f:
+                json.dump(all_variations, f, indent=2)
+        except Exception as write_error:
+            st.warning(f"Could not create historical_column_variations.json: {write_error}")
 
 
 def select_database_table(schema: str, table: str) -> bool:
@@ -82,7 +82,8 @@ def select_database_table(schema: str, table: str) -> bool:
     st.session_state.selected_table_schema = schema
 
     # Load column definitions from the selected table
-    target_columns = load_table_columns(schema, table)
+    db_utils = DatabaseUtils()
+    target_columns = db_utils.load_table_columns(schema, table)
     if target_columns:
         # Update session state
         st.session_state.TARGET_COLUMNS = target_columns
@@ -192,10 +193,16 @@ def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Identify columns
     try:
+        # Load historical mappings for the current table
+        current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
+        historical_mappings = {}
+        
         try:
-            with open("account_mapping.json", "r") as f:
-                historical_mappings = json.load(f)
+            with open("historical_column_variations.json", "r") as f:
+                all_mappings = json.load(f)
+                historical_mappings = all_mappings.get(current_table, {})
         except Exception:
+            # If file doesn't exist, create empty mappings
             historical_mappings = {col.name: [] for col in st.session_state.TARGET_COLUMNS}
 
         # Initialize mappings for columns that don't have entries yet
@@ -216,10 +223,21 @@ def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
 
         # Save updated mappings
         try:
-            with open("account_mapping.json", "w") as f:
-                json.dump(historical_mappings, f, indent=2)
+            # Load the entire file first to preserve mappings for other tables
+            try:
+                with open("historical_column_variations.json", "r") as f:
+                    all_mappings = json.load(f)
+            except Exception:
+                all_mappings = {}
+            
+            # Update the mappings for the current table
+            all_mappings[current_table] = historical_mappings
+            
+            # Save back to file
+            with open("historical_column_variations.json", "w") as f:
+                json.dump(all_mappings, f, indent=2)
         except Exception as e:
-            st.warning(f"Could not save mappings: {e}")
+            st.warning(f"Could not save historical column variations: {e}")
 
         result["column_mappings"] = column_mappings
         result["success"] = True

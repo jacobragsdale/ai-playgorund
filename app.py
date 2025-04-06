@@ -10,7 +10,7 @@ from controller import (
     identify_sheet_and_columns,
     apply_column_mappings
 )
-from db_utils import save_to_database
+from db_utils import DatabaseUtils
 from models import AVAILABLE_TABLES
 
 # Load environment variables
@@ -476,42 +476,65 @@ def show_data_editor(formatted_df, deletion_status):
 
 
 def show_download_save_options(formatted_df, uploaded_file):
-    """Display download and save options for the formatted data"""
-    # Allow downloading the formatted data
+    """Show download and save options for the formatted data"""
+    st.subheader("Download or Save Data")
+    st.write("You can either download this data as a CSV file or save it directly to the database.")
+    
+    # Generate CSV data for download
     csv = formatted_df.to_csv(index=False)
     
-    if st.session_state.db_mode:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.download_button(
-                label="Download formatted data as CSV",
-                data=csv,
-                file_name=f"formatted_{uploaded_file.name.split('.')[0]}.csv",
-                mime="text/csv",
-            )
-
-        # Add button to save to database
-        with col2:
-            if st.button(f"Save to {st.session_state.selected_table_schema}.{st.session_state.selected_table}", type="primary"):
-                success, message = save_to_database(
-                    formatted_df,
-                    st.session_state.selected_table,
-                    st.session_state.selected_table_schema
-                )
-
-                if success:
-                    st.success(message)
-                else:
-                    st.error(message)
-    else:
-        # Just download button in standalone mode
+    # Create container for buttons
+    button_container = st.container()
+    
+    # Add buttons side by side
+    col1, col2, col3 = button_container.columns([1, 1, 2])
+    
+    # Download button
+    with col1:
         st.download_button(
             label="Download formatted data as CSV",
             data=csv,
             file_name=f"formatted_{uploaded_file.name.split('.')[0]}.csv",
             mime="text/csv",
-            type="primary"
         )
+
+    # Add button to save to database
+    with col2:
+        if st.button(f"Save to {st.session_state.selected_table_schema}.{st.session_state.selected_table}", type="primary"):
+            db_utils = DatabaseUtils()
+            success, message = db_utils.save_to_database(
+                formatted_df,
+                st.session_state.selected_table,
+                st.session_state.selected_table_schema
+            )
+
+            if success:
+                st.success(message)
+            else:
+                st.error(message)
+
+
+def show_sidebar():
+    """Display the sidebar with app information and instructions"""
+    with st.sidebar:
+        st.header("About")
+        st.info("""
+        This app processes Excel files and maps them to database tables:
+        - Select a target database table
+        - Upload an Excel file with relevant data
+        - The app maps columns from Excel to database columns
+        - Save the processed data back to the database
+        """)
+
+        st.header("Instructions")
+        st.markdown("""
+        1. Select the target database table
+        2. Upload an Excel file using the file uploader
+        3. Review all sheets in the uploaded file
+        4. The app will automatically identify the sheet with relevant data
+        5. You can override the selected sheet and column mappings if needed
+        6. Save the processed data to the database
+        """)
 
 
 def main():
@@ -529,79 +552,32 @@ def main():
     # Load historical column variations
     load_historical_variations()
 
-    # Update title based on mode
-    if st.session_state.db_mode:
-        st.title("Database Excel Processor")
-    else:
-        st.title("Excel Data Processor")
+    # Set title
+    st.title("Database Excel Processor")
 
     # Sidebar for app navigation and information
     show_sidebar()
 
-    # Main content area - Table selection step in DB mode
-    if st.session_state.db_mode and not st.session_state.table_selected:
+    # Main content area - Table selection step
+    if not st.session_state.table_selected:
         show_table_selection()
-    # If a table is selected or in standalone mode, proceed with file upload
+    # If a table is selected, proceed with file upload
     else:
-        # Display the selected table in database mode
-        if st.session_state.db_mode and st.session_state.selected_table:
-            st.subheader(f"Processing for: {st.session_state.selected_table_schema}.{st.session_state.selected_table}")
+        # Display the selected table
+        st.subheader(f"Processing for: {st.session_state.selected_table_schema}.{st.session_state.selected_table}")
 
-            # Display target columns
-            show_column_definitions()
+        # Display target columns
+        show_column_definitions()
 
-            # Option to select a different table
-            if st.button("Select Different Table"):
-                # Reset the session state
-                for key in list(st.session_state.keys()):
-                    del st.session_state[key]
-                st.rerun()  # Refresh the page to go back to table selection
-        else:
-            # In standalone mode, just display target columns
-            show_column_definitions()
+        # Option to select a different table
+        if st.button("Select Different Table"):
+            # Reset the session state
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()  # Refresh the page to go back to table selection
 
         # Show file upload interface
         show_file_upload()
-
-
-def show_sidebar():
-    """Display the sidebar with app information and instructions"""
-    with st.sidebar:
-        st.header("About")
-        if st.session_state.db_mode:
-            st.info("""
-            This app processes Excel files and maps them to database tables:
-            - Select a target database table
-            - Upload an Excel file with relevant data
-            - The app maps columns from Excel to database columns
-            - Save the processed data back to the database
-            """)
-        else:
-            st.info("""
-            This app processes Excel files:
-            - Upload an Excel file with relevant data
-            - The app identifies sheets and maps columns
-            - Download the processed data as CSV
-            """)
-
-        st.header("Instructions")
-        if st.session_state.db_mode:
-            st.markdown("""
-            1. Select the target database table
-            2. Upload an Excel file using the file uploader
-            3. Review all sheets in the uploaded file
-            4. The app will automatically identify the sheet with relevant data
-            5. You can override the selected sheet and column mappings if needed
-            6. Save the processed data to the database
-            """)
-        else:
-            st.markdown("""
-            1. Upload an Excel file using the file uploader
-            2. Review all sheets in the uploaded file
-            3. The app will automatically identify the sheet with relevant data
-            4. You can override the selected sheet and column mappings if needed
-            5. Download the processed data as CSV
-            """)
 
 
 if __name__ == "__main__":
