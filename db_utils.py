@@ -1,31 +1,23 @@
 import os
 import pandas as pd
 import streamlit as st
+import pyodbc
 from typing import Tuple, Optional, List, Dict, Any
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-# Flag for database availability
-try:
-    import pyodbc
-    PYODBC_AVAILABLE = True
-except ImportError:
-    PYODBC_AVAILABLE = False
-
+# Import column generator
+from generate_column_definitions import generate_target_columns_from_db
 
 def is_db_available() -> bool:
     """Check if database functionality is available"""
-    return PYODBC_AVAILABLE
+    return True  # Always assume database is available
 
 
 def get_db_connection():
     """Get a connection to the database"""
-    if not PYODBC_AVAILABLE:
-        st.error("pyodbc is not available. Database connection not possible.")
-        return None
-    
     try:
         server = os.getenv("DB_SERVER")
         database = os.getenv("DB_NAME")
@@ -56,9 +48,6 @@ def save_to_database(df: pd.DataFrame, table_name: str, schema: str = "dbo") -> 
     Returns:
         Tuple of (success, message)
     """
-    if not PYODBC_AVAILABLE:
-        return False, "Database functionality is not available. Missing required dependency: pyodbc"
-    
     connection = get_db_connection()
     if not connection:
         return False, "Could not establish database connection"
@@ -110,14 +99,6 @@ def save_to_database(df: pd.DataFrame, table_name: str, schema: str = "dbo") -> 
         connection.close()
 
 
-# Conditional import for generate_column_definitions
-try:
-    from generate_column_definitions import generate_target_columns_from_db
-    COLUMN_GENERATOR_AVAILABLE = True
-except ImportError:
-    COLUMN_GENERATOR_AVAILABLE = False
-
-
 def load_table_columns(schema: str, table_name: str):
     """
     Load column definitions from the selected database table
@@ -129,10 +110,6 @@ def load_table_columns(schema: str, table_name: str):
     Returns:
         List of TargetColumn objects or None if not available
     """
-    if not PYODBC_AVAILABLE or not COLUMN_GENERATOR_AVAILABLE:
-        st.error("Database functionality is not available. Missing required dependencies.")
-        return None
-    
     try:
         # Generate target columns from database table
         target_columns = generate_target_columns_from_db(table_name, schema)

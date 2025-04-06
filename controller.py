@@ -11,13 +11,8 @@ from models import DEFAULT_TARGET_COLUMNS
 
 def initialize_session_state():
     """Initialize session state variables"""
-    # First check if DB is available
-    db_available = False
-    try:
-        from db_utils import is_db_available, COLUMN_GENERATOR_AVAILABLE
-        db_available = is_db_available() and COLUMN_GENERATOR_AVAILABLE
-    except ImportError:
-        pass
+    # Always assume DB is available
+    db_available = True
 
     if 'table_selected' not in st.session_state:
         st.session_state.table_selected = False
@@ -87,20 +82,19 @@ def select_database_table(schema: str, table: str) -> bool:
     st.session_state.selected_table_schema = schema
 
     # Load column definitions from the selected table
-    if is_db_available():
-        target_columns = load_table_columns(schema, table)
-        if target_columns:
-            # Update session state
-            st.session_state.TARGET_COLUMNS = target_columns
-            st.session_state.TARGET_COLUMN_DICT = {col.name: col for col in target_columns}
-            st.session_state.TARGET_COLUMN_NAMES = [col.name for col in target_columns]
-            st.session_state.table_selected = True
+    target_columns = load_table_columns(schema, table)
+    if target_columns:
+        # Update session state
+        st.session_state.TARGET_COLUMNS = target_columns
+        st.session_state.TARGET_COLUMN_DICT = {col.name: col for col in target_columns}
+        st.session_state.TARGET_COLUMN_NAMES = [col.name for col in target_columns]
+        st.session_state.table_selected = True
 
-            # Load historical variations if available
-            load_historical_variations()
-            return True
+        # Load historical variations if available
+        load_historical_variations()
+        return True
 
-    # Fallback to default columns if database isn't available
+    # If we couldn't get column definitions for some reason, still mark table as selected
     st.session_state.table_selected = True
     return False
 
