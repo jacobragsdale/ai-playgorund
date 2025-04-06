@@ -1,0 +1,24 @@
+{
+  "dbo.Accounts": {
+    "account_id": [
+      "account-no.",
+      "account identification"
+    ],
+    "balance": [
+      "balance_amount",
+      "current-balance"
+    ],
+    "open_date": [
+      "opening-date",
+      "opening date / initiation date"
+    ],
+    "status": [
+      "status_type",
+      "current-status"
+    ],
+    "customer_name": [
+      "client_name",
+      "client-name-identifier"
+    ]
+  }
+}
