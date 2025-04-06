@@ -4,7 +4,7 @@ from typing import Dict, Any
 import pandas as pd
 import streamlit as st
 
-from ai_utils import identify_target_sheet, identify_column
+from ai_utils import identify_target_sheet, identify_columns_with_threads
 from db_utils import DatabaseUtils
 from models import DEFAULT_TARGET_COLUMNS
 
@@ -209,17 +209,13 @@ def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
         for column in st.session_state.TARGET_COLUMNS:
             historical_mappings.setdefault(column.name, [])
 
-        # Process each target column to get AI suggestions
-        column_mappings = {}
-        for column in st.session_state.TARGET_COLUMNS:
-            guessed_column = identify_column(df, column, historical_mappings)
-
-            if guessed_column:
-                # Update historical mappings
-                if guessed_column not in historical_mappings[column.name]:
-                    historical_mappings[column.name].append(guessed_column)
-
-                column_mappings[column.name] = guessed_column
+        # Use the new utility function to identify columns with threads
+        column_mappings = identify_columns_with_threads(
+            df, 
+            st.session_state.TARGET_COLUMNS, 
+            historical_mappings,
+            update_historical=True
+        )
 
         # Save updated mappings
         try:

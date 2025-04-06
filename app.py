@@ -1,7 +1,7 @@
 import streamlit as st
 from dotenv import load_dotenv
 
-from ai_utils import identify_column
+from ai_utils import identify_columns_with_threads
 from controller import (
     initialize_session_state,
     load_historical_variations,
@@ -80,7 +80,7 @@ def update_formatted_df(df, user_column_mappings):
 def show_file_upload():
     """Display file upload interface and process uploaded file"""
     # File uploader
-    uploaded_file = st.file_uploader("Choose an Excel file", type=["xlsx", "xls"])
+    uploaded_file = st.file_uploader("Upload Deal Sheet", type=["xlsx", "xls"])
 
     if uploaded_file is not None:
         # Store the file in session state for later use
@@ -271,19 +271,18 @@ def show_sheet_override(excel_data, target_sheet):
 
 
 def handle_sheet_change(excel_data, selected_sheet, results):
-    """Handle the analysis when a sheet is changed"""
+    """Handle sheet change by recalculating column mappings"""
     with st.spinner(f"Analyzing sheet '{selected_sheet}'..."):
         # Get the dataframe for the new sheet
         new_df = excel_data["dataframes"][selected_sheet]
         
-        # Create column mappings for the new sheet
-        new_mappings = {}
-        
-        # For each target column, try to identify the corresponding column in the new sheet
-        for column in st.session_state.TARGET_COLUMNS:
-            guessed_column = identify_column(new_df, column)
-            if guessed_column:
-                new_mappings[column.name] = guessed_column
+        # Use the shared utility function to identify columns with threads
+        # For sheet change, we don't need to update historical mappings
+        new_mappings = identify_columns_with_threads(
+            new_df,
+            st.session_state.TARGET_COLUMNS,
+            update_historical=False
+        )
         
         # Store the new mappings in the session state
         if new_mappings:

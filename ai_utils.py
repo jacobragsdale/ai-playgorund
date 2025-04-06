@@ -1,5 +1,6 @@
 import json
 from typing import Dict, Optional, List
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 import streamlit as st
@@ -221,3 +222,55 @@ def identify_column(df: pd.DataFrame, target_column: TargetColumn, historical_ma
         except Exception as e:
             st.error(f"Error identifying column {target_column.name}: {e}")
             return None 
+
+
+def identify_columns_with_threads(
+    df: pd.DataFrame, 
+    target_columns: List[TargetColumn], 
+    historical_mappings: Optional[Dict[str, List[str]]] = None,
+    update_historical: bool = True
+) -> Dict[str, str]:
+    """
+    Use threads to identify columns in parallel for multiple target columns
+    
+    Args:
+        df: DataFrame to analyze
+        target_columns: List of TargetColumn objects to identify
+        historical_mappings: Optional dictionary of historical mappings
+        update_historical: Whether to update historical mappings with new matches
+        
+    Returns:
+        Dictionary mapping target column names to identified dataframe columns
+    """
+    # Function to process a single column in a thread
+    def identify_column_thread(column):
+        guessed_column = identify_column(df, column, historical_mappings)
+        return column.name, guessed_column
+    
+    # Initialize the column mappings dictionary
+    column_mappings = {}
+    
+    # Use ThreadPoolExecutor to parallelize column identification
+    with ThreadPoolExecutor() as executor:
+        # Submit all column identification tasks
+        future_to_column = {
+            executor.submit(identify_column_thread, column): column 
+            for column in target_columns
+        }
+        
+        # Process results as they complete
+        for future in as_completed(future_to_column):
+            try:
+                column_name, guessed_column = future.result()
+                if guessed_column:
+                    column_mappings[column_name] = guessed_column
+            except Exception as exc:
+                st.warning(f"Column identification thread generated an exception: {exc}")
+    
+    # Update historical mappings if requested
+    if update_historical and historical_mappings:
+        for column_name, guessed_column in column_mappings.items():
+            if guessed_column not in historical_mappings[column_name]:
+                historical_mappings[column_name].append(guessed_column)
+    
+    return column_mappings 
