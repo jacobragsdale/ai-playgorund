@@ -253,13 +253,21 @@ def apply_column_mappings(df: pd.DataFrame, mappings: Dict[str, str]) -> pd.Data
         mappings: Dictionary of target_col -> excel_col
 
     Returns:
-        DataFrame with target column names and data from mapped Excel columns
+        DataFrame with target column names and data from mapped Excel columns, 
+        ordered according to the TARGET_COLUMNS definition
     """
-    # Create a new empty dataframe with target column names
+    # Create a new empty dataframe
     result_df = pd.DataFrame()
 
-    # For each target column, get data from the mapped Excel column
-    for target_col, excel_col in mappings.items():
+    # Apply the mappings in the order defined in TARGET_COLUMNS
+    for target_col_obj in st.session_state.TARGET_COLUMNS:
+        target_col = target_col_obj.name
+        
+        # Skip if this target column isn't in the mappings
+        if target_col not in mappings:
+            continue
+            
+        excel_col = mappings[target_col]
         if excel_col in df.columns:
             # Add the data from the Excel column to the result dataframe with the target column name
             result_df[target_col] = df[excel_col]

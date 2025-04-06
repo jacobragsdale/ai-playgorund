@@ -111,7 +111,7 @@ def show_file_upload():
         st.markdown("---")
 
         # Process the data automatically - only if we don't already have results
-        process_and_display_data(excel_data, uploaded_file)
+        process_and_display_data(excel_data)
 
 
 def display_excel_sheets(excel_data):
@@ -152,7 +152,7 @@ def display_excel_sheets(excel_data):
             st.dataframe(df, use_container_width=True)
 
 
-def process_and_display_data(excel_data, uploaded_file):
+def process_and_display_data(excel_data):
     """Process and display the data with AI analysis, sheet selection, and column mapping"""
     st.subheader("Override Target Sheet Selection")
 
@@ -300,75 +300,72 @@ def handle_sheet_change(excel_data, selected_sheet, results):
 
 
 def show_column_mapping_form(df, ai_mappings):
-    """Display form for column mapping overrides"""
-    with st.form(key="column_mapping_form"):
-        st.write("If any of the column mappings are incorrect, update them here.")
+    """Display column mapping options that update automatically when changed"""
+    st.write("If any of the column mappings are incorrect, update them here.")
 
-        # Add "None" option for columns that don't exist in the dataset
-        df_columns_with_none = ["None"] + list(df.columns)
+    # Add "None" option for columns that don't exist in the dataset
+    df_columns_with_none = ["None"] + list(df.columns)
 
-        # Create user-editable column mappings
+    # Create callback function for dropdown changes
+    def on_column_mapping_change():
+        # Collect all current dropdown selections
         user_column_mappings = {}
-        cols = st.columns(3)
-        for i, column in enumerate(st.session_state.TARGET_COLUMNS):
-            col_idx = i % 3
-            with cols[col_idx]:
-                # Create a version of the dropdown options with stars for AI-suggested mappings
-                marked_columns = df_columns_with_none.copy()
+        for column in st.session_state.TARGET_COLUMNS:
+            key = f"col_map_{column.name}"
+            if key in st.session_state and st.session_state[key] != "None":
+                # Extract the original column name without the star/AI suggestion text
+                orig_col = st.session_state[key].replace("* ", "").split(" (AI suggestion)")[0]
+                user_column_mappings[column.name] = orig_col
 
-                # Get current value from session state if available
-                key = f"col_map_{column.name}"
+        # Update formatted dataframe with new mappings
+        update_formatted_df(df, user_column_mappings)
 
-                # Set default to the AI suggestion if available
-                default_idx = 0
-                ai_suggestion = None
+    # Create user-editable column mappings
+    cols = st.columns(3)
+    for i, column in enumerate(st.session_state.TARGET_COLUMNS):
+        col_idx = i % 3
+        with cols[col_idx]:
+            # Create a version of the dropdown options with stars for AI-suggested mappings
+            marked_columns = df_columns_with_none.copy()
 
-                if column.name in ai_mappings:
-                    try:
-                        ai_suggestion = ai_mappings[column.name]
-                        default_idx = df_columns_with_none.index(ai_suggestion)
+            # Get current value from session state if available
+            key = f"col_map_{column.name}"
 
-                        # Mark the AI suggestion with a star in the dropdown
-                        for j, col_name in enumerate(marked_columns):
-                            if col_name == ai_suggestion:
-                                marked_columns[j] = f"{col_name} (AI suggestion)"
-                    except ValueError:
-                        default_idx = 0
+            # Set default to the AI suggestion if available
+            default_idx = 0
 
-                # Get current value from session state if available
-                if key in st.session_state and isinstance(st.session_state[key], str):
-                    try:
-                        # Find the index in original list (without stars or AI suggestion text)
-                        orig_value = st.session_state[key].replace("* ", "").split(" (AI suggestion)")[0]
-                        if orig_value in df_columns_with_none:
-                            current_idx = df_columns_with_none.index(orig_value)
-                            default_idx = current_idx
-                    except (ValueError, IndexError):
-                        pass
+            if column.name in ai_mappings:
+                try:
+                    ai_suggestion = ai_mappings[column.name]
+                    default_idx = df_columns_with_none.index(ai_suggestion)
 
-                # Display the dropdown with marked options
-                selected_col = st.selectbox(
-                    f"{column.name} ({column.data_type}):",
-                    options=marked_columns,
-                    index=default_idx,
-                    help=column.description,
-                    key=key
-                )
+                    # Mark the AI suggestion with a star in the dropdown
+                    for j, col_name in enumerate(marked_columns):
+                        if col_name == ai_suggestion:
+                            marked_columns[j] = f"{col_name} (AI suggestion)"
+                except ValueError:
+                    default_idx = 0
 
-                # Convert selected value back to original column name
-                if selected_col != "None":
-                    # Extract the original column name without the star/AI suggestion text
-                    orig_col = selected_col.replace("* ", "").split(" (AI suggestion)")[0]
-                    user_column_mappings[column.name] = orig_col
+            # Get current value from session state if available
+            if key in st.session_state and isinstance(st.session_state[key], str):
+                try:
+                    # Find the index in original list (without stars or AI suggestion text)
+                    orig_value = st.session_state[key].replace("* ", "").split(" (AI suggestion)")[0]
+                    if orig_value in df_columns_with_none:
+                        current_idx = df_columns_with_none.index(orig_value)
+                        default_idx = current_idx
+                except (ValueError, IndexError):
+                    pass
 
-        # Submit button for the form
-        submit_button = st.form_submit_button("Override Mappings")
-
-        if submit_button:
-            # Update formatted_df in session state
-            st.session_state.user_column_mappings = user_column_mappings
-            formatted_df = update_formatted_df(df, user_column_mappings)
-            st.session_state.formatted_df = formatted_df
+            # Display the dropdown with marked options
+            selected_col = st.selectbox(
+                f"{column.name} ({column.data_type}):",
+                options=marked_columns,
+                index=default_idx,
+                help=column.description,
+                key=key,
+                on_change=on_column_mapping_change
+            )
 
 
 def show_formatted_data(formatted_df):
@@ -429,10 +426,10 @@ def show_data_editor(formatted_df, deletion_status):
         display_df = formatted_df.copy()
         display_df["_select_"] = False
 
-        # Get list of original columns (excluding _select_)
-        data_columns = formatted_df.columns.tolist()
+        # Get list of original columns in the correct order (based on TARGET_COLUMNS)
+        data_columns = [col.name for col in st.session_state.TARGET_COLUMNS if col.name in formatted_df.columns]
 
-        # Rearrange columns to put _select_ first
+        # Rearrange columns to put _select_ first, followed by columns in correct order
         select_cols = ["_select_"] + data_columns
         display_df = display_df[select_cols]
 
@@ -472,7 +469,7 @@ def show_data_editor(formatted_df, deletion_status):
 
 def show_download_save_options(formatted_df):
     """Show download and save options for the formatted data"""
-    st.subheader("Download or Save Data")
+    st.subheader("Write to Database")
     st.write(f"Save the formatted data as displayed to {st.session_state.selected_table_schema}.{st.session_state.selected_table}")
 
     if st.button(f"Write to DB table {st.session_state.selected_table_schema}.{st.session_state.selected_table}", type="primary"):
@@ -494,21 +491,53 @@ def show_sidebar():
     with st.sidebar:
         st.header("About")
         st.info("""
-        This app processes Excel files and maps them to database tables:
-        - Select a target database table
-        - Upload an Excel file with relevant data
-        - The app maps columns from Excel to database columns
-        - Save the processed data back to the database
+        This app helps you map Excel data to database tables:
+
+        - Automatically identifies the right sheet and columns in your Excel file
+        - Maps Excel columns to your database schema
+        - Allows you to override any AI-suggested mappings
+        - Lets you remove unwanted rows before saving
+        - Preserves column mappings to improve future accuracy
         """)
 
         st.header("Instructions")
         st.markdown("""
-        1. Select the target database table
-        2. Upload an Excel file using the file uploader
-        3. Review all sheets in the uploaded file
-        4. The app will automatically identify the sheet with relevant data
-        5. You can override the selected sheet and column mappings if needed
-        6. Save the processed data to the database
+        ### 1. Select Target Table
+        - Choose the database table that defines your target schema
+        - This determines which columns the app will look for
+
+        ### 2. Upload Excel File
+        - Upload an Excel file containing your data
+        - The app works with .xlsx and .xls formats
+
+        ### 3. Review & Adjust
+        - The app automatically identifies the most relevant sheet
+        - Review all sheets in the Excel file in the tabs
+        - AI-suggested sheets and columns are marked
+        - Override the sheet selection if needed
+
+        ### 4. Column Mapping
+        - The app maps Excel columns to database columns
+        - Modify any mapping by selecting from the dropdown
+        - Changes apply automatically when you select a new value
+
+        ### 5. Remove Unwanted Rows
+        - Check the boxes next to rows you want to remove
+        - Click "Delete Selected Rows" to remove them
+
+        ### 6. Save to Database
+        - Review the final formatted data
+        - Click "Write to DB table" to save the data
+        """)
+
+        st.markdown("---")
+
+        st.header("Tips")
+        st.markdown("""
+        - Column mappings are learned over time
+        - The select column is for row deletion only
+        - All columns display in database schema order
+        - You can start over by clicking "Select Different Table"
         """)
 
 
