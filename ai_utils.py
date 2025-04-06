@@ -225,7 +225,7 @@ def identify_column(df: pd.DataFrame, target_column: TargetColumn, historical_ma
             return None
 
 
-def identify_columns_with_threads(df: pd.DataFrame, target_columns: List[TargetColumn], historical_mappings: Optional[Dict[str, List[str]]] = None, update_historical: bool = True) -> Dict[str, str]:
+def identify_columns(df: pd.DataFrame, target_columns: List[TargetColumn], historical_mappings: Optional[Dict[str, List[str]]] = None, update_historical: bool = True) -> Dict[str, str]:
     """
     Use threads to identify columns in parallel for multiple target columns
 

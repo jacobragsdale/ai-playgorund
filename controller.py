@@ -1,81 +1,53 @@
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 import pandas as pd
 import streamlit as st
 
-from ai_utils import identify_target_sheet, identify_columns_with_threads
+from ai_utils import identify_target_sheet, identify_columns
 from db_utils import DatabaseUtils
 from models import DEFAULT_TARGET_COLUMNS
 
 
+# === SESSION STATE MANAGEMENT ===
+
 def initialize_session_state():
-    """Initialize session state variables"""
+    """Initialize core session state variables"""
+    # Table selection state
     if 'table_selected' not in st.session_state:
         st.session_state.table_selected = False
     if 'selected_table' not in st.session_state:
         st.session_state.selected_table = None
     if 'selected_table_schema' not in st.session_state:
         st.session_state.selected_table_schema = None
+
+    # Target columns state
     if 'TARGET_COLUMNS' not in st.session_state:
         st.session_state.TARGET_COLUMNS = DEFAULT_TARGET_COLUMNS
     if 'TARGET_COLUMN_DICT' not in st.session_state:
         st.session_state.TARGET_COLUMN_DICT = {col.name: col for col in DEFAULT_TARGET_COLUMNS}
     if 'TARGET_COLUMN_NAMES' not in st.session_state:
         st.session_state.TARGET_COLUMN_NAMES = [col.name for col in DEFAULT_TARGET_COLUMNS]
+
+    # Data state
     if 'formatted_df' not in st.session_state:
         st.session_state.formatted_df = None
+    if 'rows_to_delete' not in st.session_state:
+        st.session_state.rows_to_delete = set()
 
 
-def load_historical_variations():
-    """Load historical column name variations and update the target column objects"""
-    if not hasattr(st.session_state, 'TARGET_COLUMN_DICT') or not st.session_state.selected_table:
-        return
-
-    try:
-        # Get the current table identifier
-        current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
-
-        # Load historical column variations from the single JSON file
-        with open("historical_column_variations.json", "r") as f:
-            all_variations = json.load(f)
-
-            # Get variations specific to the current table
-            table_variations = all_variations.get(current_table, {})
-
-            # Update the target column objects with the historical variations
-            for col_name, col_variations in table_variations.items():
-                if col_name in st.session_state.TARGET_COLUMN_DICT:
-                    st.session_state.TARGET_COLUMN_DICT[col_name].historical_variations = col_variations
-    except Exception as e:
-        st.warning(f"Could not load historical column variations: {e}")
-        # Create a default empty mapping if the file doesn't exist
-        try:
-            # Create the file with an empty structure for the current table
-            current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
-            all_variations = {current_table: {}}
-
-            # Initialize with empty lists for each column
-            for col_name in st.session_state.TARGET_COLUMN_DICT:
-                all_variations[current_table][col_name] = []
-
-            # Save the initial structure
-            with open("historical_column_variations.json", "w") as f:
-                json.dump(all_variations, f, indent=2)
-        except Exception as write_error:
-            st.warning(f"Could not create historical_column_variations.json: {write_error}")
-
+# === DATABASE OPERATIONS ===
 
 def select_database_table(schema: str, table: str) -> bool:
     """
-    Select a database table and load its column definitions
+    Load database table column definitions and update session state
 
     Args:
-        schema: Schema name
-        table: Table name
+        schema: Database schema name
+        table: Database table name
 
     Returns:
-        Success status
+        bool: Success status
     """
     # Store the selection in session state
     st.session_state.selected_table = table
@@ -84,25 +56,136 @@ def select_database_table(schema: str, table: str) -> bool:
     # Load column definitions from the selected table
     db_utils = DatabaseUtils()
     target_columns = db_utils.generate_target_columns_from_db(table, schema)
+
     if target_columns:
-        # Update session state
+        # Update session state with table column information
         st.session_state.TARGET_COLUMNS = target_columns
         st.session_state.TARGET_COLUMN_DICT = {col.name: col for col in target_columns}
         st.session_state.TARGET_COLUMN_NAMES = [col.name for col in target_columns]
         st.session_state.table_selected = True
 
-        # Load historical variations if available
+        # Load historical mappings for this table
         load_historical_variations()
         return True
 
-    # If we couldn't get column definitions for some reason, still mark table as selected
+    # If we couldn't get column definitions, still mark table as selected
     st.session_state.table_selected = True
     return False
 
 
+def save_to_database(formatted_df: pd.DataFrame) -> tuple[bool, str]:
+    """
+    Save formatted dataframe to the selected database table
+
+    Args:
+        formatted_df: DataFrame to save
+
+    Returns:
+        tuple: (success, message)
+    """
+    db_utils = DatabaseUtils()
+    return db_utils.save_to_database(
+        formatted_df,
+        st.session_state.selected_table,
+        st.session_state.selected_table_schema
+    )
+
+
+# === HISTORICAL MAPPING MANAGEMENT ===
+
+def load_historical_variations() -> Dict[str, List[str]]:
+    """
+    Load historical column name variations for the selected table
+
+    Returns:
+        Dict of column names to their historical variations
+    """
+    if not hasattr(st.session_state, 'TARGET_COLUMN_DICT') or not st.session_state.selected_table:
+        return {}
+
+    try:
+        # Get the current table identifier
+        current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
+
+        # Load historical column variations from the JSON file
+        try:
+            with open("historical_column_variations.json", "r") as f:
+                all_variations = json.load(f)
+                historical_mappings = all_variations.get(current_table, {})
+
+                # Update the target column objects with the historical variations
+                for col_name, col_variations in historical_mappings.items():
+                    if col_name in st.session_state.TARGET_COLUMN_DICT:
+                        st.session_state.TARGET_COLUMN_DICT[col_name].historical_variations = col_variations
+        except FileNotFoundError:
+            # Create a default empty mapping if the file doesn't exist
+            historical_mappings = create_empty_historical_mappings()
+
+        return historical_mappings
+
+    except Exception as e:
+        print(f"Error loading historical variations: {e}")
+        return {}
+
+
+def create_empty_historical_mappings() -> Dict[str, List[str]]:
+    """
+    Create empty historical mappings file for the current table
+
+    Returns:
+        Dict with empty mappings structure
+    """
+    try:
+        # Create the file with an empty structure for the current table
+        current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
+        all_variations = {current_table: {}}
+
+        # Initialize with empty lists for each column
+        for col_name in st.session_state.TARGET_COLUMN_DICT:
+            all_variations[current_table][col_name] = []
+
+        # Save the initial structure
+        with open("historical_column_variations.json", "w") as f:
+            json.dump(all_variations, f, indent=2)
+
+        return all_variations[current_table]
+    except Exception as write_error:
+        print(f"Could not create historical_column_variations.json: {write_error}")
+        return {}
+
+
+def save_historical_variations(historical_mappings: Dict[str, List[str]]):
+    """
+    Save updated historical variations to JSON file
+
+    Args:
+        historical_mappings: Updated mappings for current table
+    """
+    try:
+        current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
+
+        # Load the entire file first to preserve mappings for other tables
+        try:
+            with open("historical_column_variations.json", "r") as f:
+                all_mappings = json.load(f)
+        except Exception:
+            all_mappings = {}
+
+        # Update the mappings for the current table
+        all_mappings[current_table] = historical_mappings
+
+        # Save back to file
+        with open("historical_column_variations.json", "w") as f:
+            json.dump(all_mappings, f, indent=2)
+    except Exception as e:
+        print(f"Could not save historical column variations: {e}")
+
+
+# === EXCEL PROCESSING ===
+
 def process_excel_file(uploaded_file) -> Dict[str, Any]:
     """
-    Process an Excel file and return structured data about it
+    Read and process an Excel file
 
     Args:
         uploaded_file: Uploaded Excel file
@@ -131,7 +214,7 @@ def process_excel_file(uploaded_file) -> Dict[str, Any]:
                 df = pd.read_excel(uploaded_file, sheet_name=sheet_name)
                 result["dataframes"][sheet_name] = df
             except Exception as e:
-                st.warning(f"Error reading sheet {sheet_name}: {e}")
+                print(f"Error reading sheet {sheet_name}: {e}")
 
         result["success"] = True
         return result
@@ -154,7 +237,8 @@ def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
         "target_sheet": None,
         "confidence": 0,
         "column_mappings": {},
-        "success": False
+        "success": False,
+        "error": None
     }
 
     # Skip if no Excel data
@@ -173,11 +257,7 @@ def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
         result["error"] = "No uploaded file in session state"
         return result
 
-    target_sheet = identify_target_sheet(
-        uploaded_file,
-        st.session_state.TARGET_COLUMNS,
-        table_info
-    )
+    target_sheet = identify_target_sheet(uploaded_file, st.session_state.TARGET_COLUMNS, table_info)
 
     if not target_sheet:
         result["error"] = "Could not identify target sheet"
@@ -194,46 +274,12 @@ def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
     # Identify columns
     try:
         # Load historical mappings for the current table
-        current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
-        historical_mappings = {}
+        historical_mappings = load_historical_variations()
 
-        try:
-            with open("historical_column_variations.json", "r") as f:
-                all_mappings = json.load(f)
-                historical_mappings = all_mappings.get(current_table, {})
-        except Exception:
-            # If file doesn't exist, create empty mappings
-            historical_mappings = {col.name: [] for col in st.session_state.TARGET_COLUMNS}
-
-        # Initialize mappings for columns that don't have entries yet
-        for column in st.session_state.TARGET_COLUMNS:
-            historical_mappings.setdefault(column.name, [])
-
-        # Use the new utility function to identify columns with threads
-        column_mappings = identify_columns_with_threads(
-            df,
-            st.session_state.TARGET_COLUMNS,
-            historical_mappings,
-            update_historical=True
-        )
+        column_mappings = identify_columns(df, st.session_state.TARGET_COLUMNS, historical_mappings, update_historical=True)
 
         # Save updated mappings
-        try:
-            # Load the entire file first to preserve mappings for other tables
-            try:
-                with open("historical_column_variations.json", "r") as f:
-                    all_mappings = json.load(f)
-            except Exception:
-                all_mappings = {}
-
-            # Update the mappings for the current table
-            all_mappings[current_table] = historical_mappings
-
-            # Save back to file
-            with open("historical_column_variations.json", "w") as f:
-                json.dump(all_mappings, f, indent=2)
-        except Exception as e:
-            st.warning(f"Could not save historical column variations: {e}")
+        save_historical_variations(historical_mappings)
 
         result["column_mappings"] = column_mappings
         result["success"] = True
@@ -244,16 +290,32 @@ def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
         return result
 
 
-def apply_column_mappings(df: pd.DataFrame, mappings: Dict[str, str]) -> pd.DataFrame:
+def analyze_new_sheet(excel_data: Dict[str, Any], selected_sheet: str) -> Dict[str, str]:
     """
-    Apply column mappings to a dataframe
+    Analyze a new sheet when user overrides the AI suggestion
 
     Args:
-        df: Input dataframe
+        excel_data: Excel data containing all sheets
+        selected_sheet: User-selected sheet name
+
+    Returns:
+        Dict of column mappings
+    """
+    # Get the dataframe for the new sheet
+    new_df = excel_data["dataframes"][selected_sheet]
+    return identify_columns(new_df, st.session_state.TARGET_COLUMNS, update_historical=False)
+
+
+def apply_column_mappings(df: pd.DataFrame, mappings: Dict[str, str]) -> pd.DataFrame:
+    """
+    Apply column mappings to create properly formatted dataframe
+
+    Args:
+        df: Source dataframe
         mappings: Dictionary of target_col -> excel_col
 
     Returns:
-        DataFrame with target column names and data from mapped Excel columns, 
+        DataFrame with target column names and data from mapped Excel columns,
         ordered according to the TARGET_COLUMNS definition
     """
     # Create a new empty dataframe
@@ -262,14 +324,32 @@ def apply_column_mappings(df: pd.DataFrame, mappings: Dict[str, str]) -> pd.Data
     # Apply the mappings in the order defined in TARGET_COLUMNS
     for target_col_obj in st.session_state.TARGET_COLUMNS:
         target_col = target_col_obj.name
-        
+
         # Skip if this target column isn't in the mappings
         if target_col not in mappings:
             continue
-            
+
         excel_col = mappings[target_col]
         if excel_col in df.columns:
             # Add the data from the Excel column to the result dataframe with the target column name
             result_df[target_col] = df[excel_col]
 
     return result_df
+
+
+def delete_selected_rows(formatted_df: pd.DataFrame, rows_to_delete: set) -> pd.DataFrame:
+    """
+    Delete selected rows from the formatted dataframe
+
+    Args:
+        formatted_df: DataFrame to modify
+        rows_to_delete: Set of row indices to delete
+
+    Returns:
+        Updated DataFrame with rows removed
+    """
+    if not rows_to_delete:
+        return formatted_df
+
+    # Filter out the selected rows
+    return formatted_df.drop(index=list(rows_to_delete))
