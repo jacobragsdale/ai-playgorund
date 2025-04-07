@@ -74,15 +74,7 @@ def select_database_table(schema: str, table: str) -> bool:
 
 
 def save_to_database(formatted_df: pd.DataFrame) -> tuple[bool, str]:
-    """
-    Save formatted dataframe to the selected database table
-
-    Args:
-        formatted_df: DataFrame to save
-
-    Returns:
-        tuple: (success, message)
-    """
+    """Save formatted dataframe to the selected database table"""
     db_utils = DatabaseUtils()
     return db_utils.save_to_database(
         formatted_df,
@@ -94,12 +86,7 @@ def save_to_database(formatted_df: pd.DataFrame) -> tuple[bool, str]:
 # === HISTORICAL MAPPING MANAGEMENT ===
 
 def load_historical_variations() -> Dict[str, List[str]]:
-    """
-    Load historical column name variations for the selected table
-
-    Returns:
-        Dict of column names to their historical variations
-    """
+    """Load historical column name variations for the selected table"""
     if not hasattr(st.session_state, 'TARGET_COLUMN_DICT') or not st.session_state.selected_table:
         return {}
 
@@ -107,7 +94,6 @@ def load_historical_variations() -> Dict[str, List[str]]:
         # Get the current table identifier
         current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
 
-        # Load historical column variations from the JSON file
         try:
             with open("historical_column_variations.json", "r") as f:
                 all_variations = json.load(f)
@@ -117,26 +103,17 @@ def load_historical_variations() -> Dict[str, List[str]]:
                 for col_name, col_variations in historical_mappings.items():
                     if col_name in st.session_state.TARGET_COLUMN_DICT:
                         st.session_state.TARGET_COLUMN_DICT[col_name].historical_variations = col_variations
+                return historical_mappings
         except FileNotFoundError:
-            # Create a default empty mapping if the file doesn't exist
-            historical_mappings = create_empty_historical_mappings()
+            return create_empty_historical_mappings()
 
-        return historical_mappings
-
-    except Exception as e:
-        print(f"Error loading historical variations: {e}")
+    except Exception:
         return {}
 
 
 def create_empty_historical_mappings() -> Dict[str, List[str]]:
-    """
-    Create empty historical mappings file for the current table
-
-    Returns:
-        Dict with empty mappings structure
-    """
+    """Create empty historical mappings file for the current table"""
     try:
-        # Create the file with an empty structure for the current table
         current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
         all_variations = {current_table: {}}
 
@@ -149,50 +126,33 @@ def create_empty_historical_mappings() -> Dict[str, List[str]]:
             json.dump(all_variations, f, indent=2)
 
         return all_variations[current_table]
-    except Exception as write_error:
-        print(f"Could not create historical_column_variations.json: {write_error}")
+    except Exception:
         return {}
 
 
 def save_historical_variations(historical_mappings: Dict[str, List[str]]):
-    """
-    Save updated historical variations to JSON file
-
-    Args:
-        historical_mappings: Updated mappings for current table
-    """
+    """Save updated historical variations to JSON file"""
     try:
         current_table = f"{st.session_state.selected_table_schema}.{st.session_state.selected_table}"
 
-        # Load the entire file first to preserve mappings for other tables
         try:
             with open("historical_column_variations.json", "r") as f:
                 all_mappings = json.load(f)
         except Exception:
             all_mappings = {}
 
-        # Update the mappings for the current table
         all_mappings[current_table] = historical_mappings
 
-        # Save back to file
         with open("historical_column_variations.json", "w") as f:
             json.dump(all_mappings, f, indent=2)
-    except Exception as e:
-        print(f"Could not save historical column variations: {e}")
+    except Exception:
+        pass
 
 
 # === EXCEL PROCESSING ===
 
 def process_excel_file(uploaded_file) -> Dict[str, Any]:
-    """
-    Read and process an Excel file
-
-    Args:
-        uploaded_file: Uploaded Excel file
-
-    Returns:
-        Dict with file info, sheets, dataframes, etc.
-    """
+    """Read and process an Excel file"""
     result = {
         "filename": uploaded_file.name,
         "size": uploaded_file.size,
@@ -213,8 +173,8 @@ def process_excel_file(uploaded_file) -> Dict[str, Any]:
             try:
                 df = pd.read_excel(uploaded_file, sheet_name=sheet_name)
                 result["dataframes"][sheet_name] = df
-            except Exception as e:
-                print(f"Error reading sheet {sheet_name}: {e}")
+            except Exception:
+                pass
 
         result["success"] = True
         return result
@@ -224,18 +184,9 @@ def process_excel_file(uploaded_file) -> Dict[str, Any]:
 
 
 def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Identify the target sheet and columns in the Excel file
-
-    Args:
-        excel_data: Dict with Excel file data
-
-    Returns:
-        Dict with identification results
-    """
+    """Identify the target sheet and columns in the Excel file"""
     result = {
         "target_sheet": None,
-        "confidence": 0,
         "column_mappings": {},
         "success": False,
         "error": None
@@ -291,65 +242,34 @@ def identify_sheet_and_columns(excel_data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def analyze_new_sheet(excel_data: Dict[str, Any], selected_sheet: str) -> Dict[str, str]:
-    """
-    Analyze a new sheet when user overrides the AI suggestion
-
-    Args:
-        excel_data: Excel data containing all sheets
-        selected_sheet: User-selected sheet name
-
-    Returns:
-        Dict of column mappings
-    """
-    # Get the dataframe for the new sheet
+    """Analyze a new sheet when user overrides the AI suggestion"""
     new_df = excel_data["dataframes"][selected_sheet]
     return identify_columns(new_df, st.session_state.TARGET_COLUMNS, update_historical=False)
 
 
 def apply_column_mappings(df: pd.DataFrame, mappings: Dict[str, str]) -> pd.DataFrame:
-    """
-    Apply column mappings to create properly formatted dataframe
-
-    Args:
-        df: Source dataframe
-        mappings: Dictionary of target_col -> excel_col
-
-    Returns:
-        DataFrame with target column names and data from mapped Excel columns,
-        ordered according to the TARGET_COLUMNS definition
-    """
-    # Create a new empty dataframe
+    """Apply column mappings to create properly formatted dataframe"""
     result_df = pd.DataFrame()
 
     # Apply the mappings in the order defined in TARGET_COLUMNS
     for target_col_obj in st.session_state.TARGET_COLUMNS:
         target_col = target_col_obj.name
-
+        
         # Skip if this target column isn't in the mappings
         if target_col not in mappings:
             continue
-
+            
         excel_col = mappings[target_col]
         if excel_col in df.columns:
-            # Add the data from the Excel column to the result dataframe with the target column name
             result_df[target_col] = df[excel_col]
 
     return result_df
 
 
 def delete_selected_rows(formatted_df: pd.DataFrame, rows_to_delete: set) -> pd.DataFrame:
-    """
-    Delete selected rows from the formatted dataframe
-
-    Args:
-        formatted_df: DataFrame to modify
-        rows_to_delete: Set of row indices to delete
-
-    Returns:
-        Updated DataFrame with rows removed
-    """
+    """Delete selected rows from the formatted dataframe"""
     if not rows_to_delete:
         return formatted_df
-
+        
     # Filter out the selected rows
     return formatted_df.drop(index=list(rows_to_delete))

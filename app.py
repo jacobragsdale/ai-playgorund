@@ -1,5 +1,6 @@
 import streamlit as st
 from dotenv import load_dotenv
+import pandas as pd
 
 from controller import (
     initialize_session_state,
@@ -18,17 +19,13 @@ from models import AVAILABLE_TABLES
 load_dotenv()
 
 
-# === TABLE SELECTION UI ===
-
-def show_table_selection():
-    """Display the table selection interface"""
-    st.subheader("Step 1: Select Target Database Table")
+def show_table_and_column_selection():
+    """Display the table selection interface and column definitions"""
+    # Table selection UI
+    st.subheader("Select Target Database Table")
     st.write("Choose the database table that will define column mappings and where data will be saved.")
 
-    # Create a list of table names for the dropdown
     table_options = [f"{t['schema']}.{t['name']}" for t in AVAILABLE_TABLES]
-
-    # Table selection dropdown
     selected_table_full = st.selectbox(
         "Select Database Table:",
         options=table_options,
@@ -37,74 +34,67 @@ def show_table_selection():
     )
 
     if selected_table_full and st.button("Continue with Selected Table", type="primary"):
-        # Parse schema and table name
         schema, table = selected_table_full.split('.')
-
-        # Select the table and load columns
         success = select_database_table(schema, table)
         if success:
             st.success(f"Loaded column definitions from {schema}.{table}")
-            st.rerun()  # Refresh the page to move to the next step
+            st.rerun()
         else:
             st.error("Failed to load column definitions. Using default columns instead.")
             st.rerun()
+    
+    # If we already have a table selected, show column definitions
+    if st.session_state.table_selected:
+        with st.expander("View Target Column Definitions"):
+            col1, col2, col3 = st.columns(3)
+            columns = [col1, col2, col3]
+
+            for i, col in enumerate(st.session_state.TARGET_COLUMNS):
+                with columns[i % 3]:
+                    st.markdown(f"**{col.name}** ({col.data_type})")
+                    st.write(f"Description: {col.description}")
+                    if col.examples:
+                        st.write(f"Examples: {', '.join(col.examples)}")
+                    st.write("---")
 
 
-def show_column_definitions():
-    """Display the target column definitions in the UI"""
-    with st.expander("View Target Column Definitions"):
-        col1, col2, col3 = st.columns(3)
-        columns = [col1, col2, col3]
-
-        for i, col in enumerate(st.session_state.TARGET_COLUMNS):
-            with columns[i % 3]:
-                st.markdown(f"**{col.name}** ({col.data_type})")
-                st.write(f"Description: {col.description}")
-                if col.examples:
-                    st.write(f"Examples: {', '.join(col.examples)}")
-                st.write("---")
-
-
-# === FILE UPLOAD AND PROCESSING UI ===
-
-def show_file_upload():
-    """Display file upload interface and process uploaded file"""
-    # File uploader
+def process_excel_upload():
+    """Handle file upload, sheet display, and data processing"""
     uploaded_file = st.file_uploader("Upload Deal Sheet", type=["xlsx", "xls"])
 
-    if uploaded_file is not None:
-        # Store the file in session state for later use
-        st.session_state._uploaded_file = uploaded_file
-        st.markdown("---")
+    if uploaded_file is None:
+        return
 
-        # Check if we need to reprocess or if we have cached results
-        file_changed = (
-            "excel_data" not in st.session_state or
-            "prev_file_name" not in st.session_state or
-            st.session_state.prev_file_name != uploaded_file.name
-        )
+    # Process the uploaded file
+    st.session_state._uploaded_file = uploaded_file
+    st.markdown("---")
 
-        # Process the Excel file if it's new
-        if file_changed:
-            with st.spinner("Processing Excel file..."):
-                excel_data = process_excel_file(uploaded_file)
-                if not excel_data["success"]:
-                    st.error(f"Error processing file: {excel_data['error']}")
-                    return
+    # Check if we need to reprocess or if we have cached results
+    file_changed = (
+        "excel_data" not in st.session_state or
+        "prev_file_name" not in st.session_state or
+        st.session_state.prev_file_name != uploaded_file.name
+    )
 
-                # Store in session state for reuse
-                st.session_state.excel_data = excel_data
-                st.session_state.prev_file_name = uploaded_file.name
-        else:
-            # Use cached data
-            excel_data = st.session_state.excel_data
+    # Process the Excel file if it's new
+    if file_changed:
+        with st.spinner("Processing Excel file..."):
+            excel_data = process_excel_file(uploaded_file)
+            if not excel_data["success"]:
+                st.error(f"Error processing file: {excel_data['error']}")
+                return
 
-        # Display the sheets in tabs
-        display_excel_sheets(excel_data)
-        st.markdown("---")
+            st.session_state.excel_data = excel_data
+            st.session_state.prev_file_name = uploaded_file.name
+    else:
+        excel_data = st.session_state.excel_data
 
-        # Process the data automatically
-        process_and_display_data(excel_data)
+    # Display all the Excel sheets with tabs
+    display_excel_sheets(excel_data)
+    st.markdown("---")
+    
+    # Process and analyze the data
+    analyze_and_map_data(excel_data)
 
 
 def display_excel_sheets(excel_data):
@@ -112,22 +102,16 @@ def display_excel_sheets(excel_data):
     st.subheader("All Excel Sheets")
     st.write(f"This Excel file contains {len(excel_data['sheets'])} sheets:")
 
-    # Get the AI-suggested sheet if available
     ai_suggested_sheet = st.session_state.get("ai_suggested_sheet")
 
-    # Create an ordered list of sheets, with the AI-suggested sheet first
     ordered_sheets = excel_data["sheets"].copy()
     if ai_suggested_sheet in ordered_sheets:
-        # Move the AI-suggested sheet to the beginning
         ordered_sheets.remove(ai_suggested_sheet)
         ordered_sheets.insert(0, f"{ai_suggested_sheet} (AI suggestion)")
 
-    # Create tabs for each sheet
     tabs = st.tabs(ordered_sheets)
 
-    # Display each sheet in its own tab
     for i, tab_name in enumerate(ordered_sheets):
-        # Get the actual sheet name (removing the AI suggestion marker if present)
         if "(AI suggestion)" in tab_name:
             sheet_name = tab_name.split(" (AI suggestion)")[0]
         else:
@@ -145,104 +129,50 @@ def display_excel_sheets(excel_data):
             st.dataframe(df, use_container_width=True)
 
 
-# === DATA PROCESSING AND MAPPING UI ===
-
-def process_and_display_data(excel_data):
+def analyze_and_map_data(excel_data):
     """Process and display data with AI analysis, sheet selection, and column mapping"""
     st.subheader("Override Target Sheet Selection")
 
-    # Run AI analysis if needed
-    results = run_ai_analysis(excel_data)
-    if not results["success"]:
-        st.error(f"Analysis failed: {results.get('error', 'Unknown error')}")
-        return
-
-    # Show sheet identification results
-    target_sheet = results["target_sheet"]
-
-    # Allow sheet override
-    selected_sheet = show_sheet_override(excel_data, target_sheet)
-
-    # Get the dataframe for the selected sheet
-    df = excel_data["dataframes"][selected_sheet]
-    st.session_state.selected_sheet_df = df
-
-    # Handle sheet change if needed
-    if "sheet_changed" in st.session_state and st.session_state.sheet_changed:
-        handle_sheet_change(excel_data, selected_sheet, results)
-
-    # Show column mapping options
-    st.markdown("---")
-    st.subheader("Override Column Mappings")
-
-    # Display column mapping interface
-    show_column_mapping_options(df, results["column_mappings"])
-
-    # Display formatted data if available
-    if "formatted_df" in st.session_state and st.session_state.formatted_df is not None:
-        show_formatted_data(st.session_state.formatted_df)
-
-
-def run_ai_analysis(excel_data):
-    """Run AI analysis on the Excel data and cache results"""
-    # Check if we need to run the AI analysis
+    # Run AI analysis 
     file_changed = "prev_file_name" not in st.session_state
     if "analysis_results" not in st.session_state or file_changed:
         with st.spinner("Analyzing Excel file..."):
-            # Identify the target sheet and columns
             results = identify_sheet_and_columns(excel_data)
-
-            # Store results in session state
             st.session_state.analysis_results = results
 
-            # Automatically apply AI-suggested mappings on initial load
             if results["success"]:
                 target_sheet = results["target_sheet"]
                 df = excel_data["dataframes"][target_sheet]
                 st.session_state.selected_sheet_df = df
 
-                # Use AI mappings as initial mappings
                 ai_mappings = results["column_mappings"]
-
-                # Update formatted dataframe with AI mappings
                 if ai_mappings:
                     formatted_df = apply_column_mappings(df, ai_mappings)
                     st.session_state.formatted_df = formatted_df
                     st.session_state.user_column_mappings = ai_mappings
 
-                # Store the AI-suggested sheet for highlighting
                 st.session_state.ai_suggested_sheet = target_sheet
-
-                # Force a rerun to update the UI
                 st.rerun()
     else:
-        # Use cached results
         results = st.session_state.analysis_results
 
-    return results
+    if not results["success"]:
+        st.error(f"Analysis failed: {results.get('error', 'Unknown error')}")
+        return
 
+    target_sheet = results["target_sheet"]
 
-def show_sheet_override(excel_data, target_sheet):
-    """Display UI for overriding the target sheet selection"""
-
-    # Define callback for sheet selection change
+    # Allow sheet override with callback
     def on_sheet_change():
-        # Extract the original sheet name (without AI suggestion marker)
         sheet_name = st.session_state.sheet_selector
         if "(AI suggestion)" in sheet_name:
             sheet_name = sheet_name.split(" (AI suggestion)")[0]
 
-        # Update selected sheet DataFrame
         st.session_state.selected_sheet_df = excel_data["dataframes"][sheet_name]
-
-        # Reset column mappings
         st.session_state.user_column_mappings = {}
         st.session_state.formatted_df = None
-
-        # Set a flag to indicate that sheet has changed and needs analysis
         st.session_state.sheet_changed = True
 
-    # Create a version of sheet names with AI suggestion marked
     marked_sheets = excel_data["sheets"].copy()
     target_sheet_index = excel_data["sheets"].index(target_sheet)
     marked_sheets[target_sheet_index] = f"{target_sheet} (AI suggestion)"
@@ -255,80 +185,64 @@ def show_sheet_override(excel_data, target_sheet):
         on_change=on_sheet_change
     )
 
-    # Extract the original sheet name (without AI suggestion marker)
     if "(AI suggestion)" in selected_sheet:
         selected_sheet = selected_sheet.split(" (AI suggestion)")[0]
 
-    return selected_sheet
+    # Get dataframe for selected sheet
+    df = excel_data["dataframes"][selected_sheet]
+    st.session_state.selected_sheet_df = df
+
+    # Handle sheet change if needed
+    if "sheet_changed" in st.session_state and st.session_state.sheet_changed:
+        with st.spinner(f"Analyzing sheet '{selected_sheet}'..."):
+            new_mappings = analyze_new_sheet(excel_data, selected_sheet)
+
+            if new_mappings:
+                results["column_mappings"] = new_mappings
+                st.session_state.user_column_mappings = new_mappings
+
+                formatted_df = apply_column_mappings(df, new_mappings)
+                st.session_state.formatted_df = formatted_df
+
+        st.session_state.sheet_changed = False
+
+    # Display column mapping options
+    st.markdown("---")
+    st.subheader("Override Column Mappings")
+    display_column_mapping_options(df, results["column_mappings"])
+
+    # Display formatted data if available
+    if "formatted_df" in st.session_state and st.session_state.formatted_df is not None:
+        display_formatted_data(st.session_state.formatted_df)
 
 
-def handle_sheet_change(excel_data, selected_sheet, results):
-    """Handle sheet change by recalculating column mappings"""
-    with st.spinner(f"Analyzing sheet '{selected_sheet}'..."):
-        # Use the controller function to analyze the new sheet
-        new_mappings = analyze_new_sheet(excel_data, selected_sheet)
-
-        # Store the new mappings in the session state
-        if new_mappings:
-            # Update the results with the new mappings
-            results["column_mappings"] = new_mappings
-            # Update the UI with the new mappings
-            st.session_state.user_column_mappings = new_mappings
-
-            # Apply the new mappings to get a formatted DataFrame
-            df = excel_data["dataframes"][selected_sheet]
-            formatted_df = apply_column_mappings(df, new_mappings)
-            st.session_state.formatted_df = formatted_df
-
-    # Reset the flag
-    st.session_state.sheet_changed = False
-
-
-def update_formatted_df(df, user_column_mappings):
-    """Update the formatted dataframe when column mappings change"""
-    if not user_column_mappings:
-        return None
-
-    # Apply the mappings to create a formatted dataframe
-    formatted_df = apply_column_mappings(df, user_column_mappings)
-
-    # Store the result in session state
-    st.session_state.formatted_df = formatted_df
-    st.session_state.user_column_mappings = user_column_mappings
-
-    return formatted_df
-
-
-def show_column_mapping_options(df, ai_mappings):
+def display_column_mapping_options(df, ai_mappings):
     """Display column mapping options that update automatically when changed"""
     st.write("If any of the column mappings are incorrect, update them here.")
 
-    # Add "None" option for columns that don't exist in the dataset
     df_columns_with_none = ["None"] + list(df.columns)
 
-    # Create callback function for dropdown changes
+    # Function to update formatted df when selections change
     def on_column_mapping_change():
-        # Collect all current dropdown selections
         user_column_mappings = {}
         for column in st.session_state.TARGET_COLUMNS:
             key = f"col_map_{column.name}"
             if key in st.session_state and st.session_state[key] != "None":
-                # Extract the original column name without the star/AI suggestion text
                 orig_col = st.session_state[key].replace("* ", "").split(" (AI suggestion)")[0]
                 user_column_mappings[column.name] = orig_col
+        
+        # Update formatted dataframe
+        if user_column_mappings:
+            formatted_df = apply_column_mappings(df, user_column_mappings)
+            st.session_state.formatted_df = formatted_df
+            st.session_state.user_column_mappings = user_column_mappings
 
-        # Update formatted dataframe with new mappings
-        update_formatted_df(df, user_column_mappings)
-
-    # Create user-editable column mappings
+    # Create column selection UI
     cols = st.columns(3)
     for i, column in enumerate(st.session_state.TARGET_COLUMNS):
         col_idx = i % 3
         with cols[col_idx]:
-            # Create a version of the dropdown options with stars for AI-suggested mappings
             marked_columns = df_columns_with_none.copy()
-
-            # Set default to the AI suggestion if available
             default_idx = 0
 
             if column.name in ai_mappings:
@@ -336,18 +250,15 @@ def show_column_mapping_options(df, ai_mappings):
                     ai_suggestion = ai_mappings[column.name]
                     default_idx = df_columns_with_none.index(ai_suggestion)
 
-                    # Mark the AI suggestion with a star in the dropdown
                     for j, col_name in enumerate(marked_columns):
                         if col_name == ai_suggestion:
                             marked_columns[j] = f"{col_name} (AI suggestion)"
                 except ValueError:
                     default_idx = 0
 
-            # Get current value from session state if available
             key = f"col_map_{column.name}"
             if key in st.session_state and isinstance(st.session_state[key], str):
                 try:
-                    # Find the index in original list (without stars or AI suggestion text)
                     orig_value = st.session_state[key].replace("* ", "").split(" (AI suggestion)")[0]
                     if orig_value in df_columns_with_none:
                         current_idx = df_columns_with_none.index(orig_value)
@@ -355,7 +266,6 @@ def show_column_mapping_options(df, ai_mappings):
                 except (ValueError, IndexError):
                     pass
 
-            # Display the dropdown with marked options
             st.selectbox(
                 f"{column.name} ({column.data_type}):",
                 options=marked_columns,
@@ -366,70 +276,35 @@ def show_column_mapping_options(df, ai_mappings):
             )
 
 
-# === FORMATTED DATA DISPLAY AND EDITING UI ===
-
-def show_formatted_data(formatted_df):
-    """Display the formatted data with row deletion functionality"""
+def display_formatted_data(formatted_df):
+    """Display the formatted data with row deletion and save functionality"""
     st.markdown("---")
     st.subheader("Formatted Data")
 
-    # Create a placeholder for dynamic status message
     deletion_status = st.empty()
-
-    # Display the current selection count
     if len(st.session_state.rows_to_delete) > 0:
         deletion_status.warning(f"Selected {len(st.session_state.rows_to_delete)} rows for deletion")
     else:
         deletion_status.empty()
 
-    # Show delete button and handle deletion
-    show_delete_button(formatted_df, deletion_status)
-
-    # Display the dataframe with checkboxes for selecting rows to delete
-    show_data_editor(formatted_df, deletion_status)
-
-    # Show save options
-    show_save_options(formatted_df)
-
-
-def show_delete_button(formatted_df, deletion_status):
-    """Display delete button and handle row deletion"""
+    # Delete button functionality
     if st.button("Delete Selected Rows", disabled=len(st.session_state.rows_to_delete) == 0, key="delete_button"):
-        # Store the count of rows to be deleted for the success message
         num_rows_deleted = len(st.session_state.rows_to_delete)
-
-        # Delete the selected rows using the controller function
         updated_df = delete_selected_rows(formatted_df, st.session_state.rows_to_delete)
-
-        # Update session state
         st.session_state.formatted_df = updated_df
-
-        # Clear selections
         st.session_state.rows_to_delete = set()
-
-        # Show success message
         st.success(f"Deleted {num_rows_deleted} rows")
-
-        # Clear the selection message
         deletion_status.empty()
 
-
-def show_data_editor(formatted_df, deletion_status):
-    """Display the data editor with row selection checkboxes"""
-    data_container = st.container()
-    with data_container:
-        # Add a checkbox column to the DataFrame
+    # Data editor with row selection
+    with st.container():
         display_df = formatted_df.copy()
         display_df["_select_"] = False
 
-        # Get list of original columns in the correct order (based on TARGET_COLUMNS)
         data_columns = [col.name for col in st.session_state.TARGET_COLUMNS if col.name in formatted_df.columns]
-
-        # Rearrange columns to put _select_ first, followed by columns in correct order
         select_cols = ["_select_"] + data_columns
         display_df = display_df[select_cols]
 
-        # Use the Streamlit data editor with checkbox column
         edited_df = st.data_editor(
             display_df,
             column_config={
@@ -440,43 +315,34 @@ def show_data_editor(formatted_df, deletion_status):
                     width="small"
                 ),
             },
-            disabled=data_columns,  # Only disable data columns, not the checkbox column
+            disabled=data_columns,
             hide_index=True,
             use_container_width=True,
             key="data_editor"
         )
 
-        # Update rows_to_delete based on checked boxes
         st.session_state.rows_to_delete = set()
-
-        # Add the checked rows to the set
         if "_select_" in edited_df.columns:
             for idx, row in edited_df.iterrows():
                 if row["_select_"]:
                     st.session_state.rows_to_delete.add(idx)
 
-        # Update the selection message dynamically
         if len(st.session_state.rows_to_delete) > 0:
             deletion_status.warning(f"Selected {len(st.session_state.rows_to_delete)} rows for deletion")
         else:
             deletion_status.empty()
 
-
-def show_save_options(formatted_df):
-    """Show save options for the formatted data"""
+    # Save functionality
     st.subheader("Write to Database")
     st.write(f"Save the formatted data as displayed to {st.session_state.selected_table_schema}.{st.session_state.selected_table}")
 
     if st.button(f"Write to DB table {st.session_state.selected_table_schema}.{st.session_state.selected_table}", type="primary"):
         success, message = save_to_database(formatted_df)
-
         if success:
             st.success(message)
         else:
             st.error(message)
 
-
-# === SIDEBAR UI ===
 
 def show_sidebar():
     """Display the sidebar with app information and instructions"""
@@ -484,7 +350,7 @@ def show_sidebar():
         st.header("About")
         st.info("""
         This app helps you map Excel data to database tables:
-
+        
         - Automatically identifies the right sheet and columns in your Excel file
         - Maps Excel columns to your database schema
         - Allows you to override any AI-suggested mappings
@@ -497,33 +363,33 @@ def show_sidebar():
         ### 1. Select Target Table
         - Choose the database table that defines your target schema
         - This determines which columns the app will look for
-
+        
         ### 2. Upload Excel File
         - Upload an Excel file containing your data
         - The app works with .xlsx and .xls formats
-
+        
         ### 3. Review & Adjust
         - The app automatically identifies the most relevant sheet
         - Review all sheets in the Excel file in the tabs
         - AI-suggested sheets and columns are marked
         - Override the sheet selection if needed
-
+        
         ### 4. Column Mapping
         - The app maps Excel columns to database columns
         - Modify any mapping by selecting from the dropdown
         - Changes apply automatically when you select a new value
-
+        
         ### 5. Remove Unwanted Rows
         - Check the boxes next to rows you want to remove
         - Click "Delete Selected Rows" to remove them
-
+        
         ### 6. Save to Database
         - Review the final formatted data
         - Click "Write to DB table" to save the data
         """)
-
+        
         st.markdown("---")
-
+        
         st.header("Tips")
         st.markdown("""
         - Column mappings are learned over time
@@ -533,48 +399,31 @@ def show_sidebar():
         """)
 
 
-# === MAIN APP FUNCTION ===
-
 def main():
     """Main function to run the Streamlit app"""
-    # Set page title and configuration
     st.set_page_config(
         page_title="Excel Data Processor",
         page_icon=None,
         layout="wide"
     )
 
-    # Initialize session state
     initialize_session_state()
-
-    # Load historical column variations
     load_historical_variations()
-
-    # Set title
     st.title("Database Excel Processor")
-
-    # Sidebar for app navigation and information
     show_sidebar()
 
-    # Main workflow - Table selection or file upload
     if not st.session_state.table_selected:
-        show_table_selection()
+        show_table_and_column_selection()
     else:
-        # Display the selected table
         st.subheader(f"Processing for: {st.session_state.selected_table_schema}.{st.session_state.selected_table}")
+        show_table_and_column_selection()
 
-        # Display target columns
-        show_column_definitions()
-
-        # Option to select a different table
         if st.button("Select Different Table"):
-            # Reset the session state
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
-            st.rerun()  # Refresh the page to go back to table selection
+            st.rerun()
 
-        # Show file upload interface
-        show_file_upload()
+        process_excel_upload()
 
 
 if __name__ == "__main__":
